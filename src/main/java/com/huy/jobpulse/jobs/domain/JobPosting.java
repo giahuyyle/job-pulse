@@ -84,6 +84,110 @@ public class JobPosting {
         // Required by JPA
     }
 
+    private JobPosting(
+            UUID id,
+            JobSource source,
+            String sourceAccount,
+            String sourceJobId,
+            String company,
+            String title,
+            String location,
+            String description,
+            String employmentType,
+            RemotePolicy remotePolicy,
+            String applyUrl,
+            Instant postedAt,
+            Instant firstSeenAt,
+            Instant lastSeenAt,
+            JobStatus status,
+            String contentHash
+    ) {
+        this.id = id;
+        this.source = source;
+        this.sourceAccount = sourceAccount;
+        this.sourceJobId = sourceJobId;
+        this.company = company;
+        this.title = title;
+        this.location = location;
+        this.description = description;
+        this.employmentType = employmentType;
+        this.remotePolicy = remotePolicy;
+        this.applyUrl = applyUrl;
+        this.postedAt = postedAt;
+        this.firstSeenAt = firstSeenAt;
+        this.lastSeenAt = lastSeenAt;
+        this.status = status;
+        this.contentHash = contentHash;
+    }
+
+    public static JobPosting create(
+            JobSource source,
+            String sourceAccount,
+            String sourceJobId,
+            String company,
+            String title,
+            String location,
+            String description,
+            String employmentType,
+            RemotePolicy remotePolicy,
+            String applyUrl,
+            Instant postedAt,
+            Instant observedAt
+    ) {
+        requireText(sourceAccount, "sourceAccount");
+        requireText(sourceJobId, "sourceJobId");
+        requireText(company, "company");
+        requireText(title, "title");
+        requireText(applyUrl, "applyUrl");
+
+        if (source == null) {
+            throw new IllegalArgumentException(
+                    "source must not be null"
+            );
+        }
+
+        if (remotePolicy == null) {
+            remotePolicy = RemotePolicy.UNSPECIFIED;
+        }
+
+        String contentHash = JobFingerprint.create(
+                title,
+                location,
+                description,
+                applyUrl
+        );
+
+        return new JobPosting(
+                UUID.randomUUID(),
+                source,
+                sourceAccount.strip(),
+                sourceJobId.strip(),
+                company.strip(),
+                title.strip(),
+                location,
+                description,
+                employmentType,
+                remotePolicy,
+                applyUrl.strip(),
+                postedAt,
+                observedAt,
+                observedAt,
+                JobStatus.ACTIVE,
+                contentHash
+        );
+    }
+
+    private static void requireText(
+            String value,
+            String fieldName
+    ) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException(
+                    fieldName + " must not be blank"
+            );
+        }
+    }
+
     // Getters
     public UUID getId() {
         return id;
