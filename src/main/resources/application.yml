@@ -1,0 +1,30 @@
+spring:
+  application:
+    name: jobpulse
+
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5433/jobpulse}
+    username: ${DATABASE_USER:jobpulse}
+    password: ${DATABASE_PASSWORD:jobpulse}
+
+  jpa:
+    open-in-view: false # prevents database access from leaking into the HTTP response layer
+    hibernate:
+      ddl-auto: validate # prevent hibernate from silently changing schema
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+
+  flyway: # owns db migrations
+    enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+
+server:
+  port: 8080
+  shutdown: graceful
