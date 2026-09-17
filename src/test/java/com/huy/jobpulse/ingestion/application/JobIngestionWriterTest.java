@@ -60,7 +60,7 @@ class JobIngestionWriterTest {
     void closesAfterTwoSuccessfulMissesAndReopensTheSamePosting() {
         MutableJobSourceClient client = new MutableJobSourceClient();
         IngestionService service = new IngestionService(
-                List.of(client),
+                new JobSourceRegistry(List.of(client)),
                 writer,
                 runRecorder
         );
@@ -170,7 +170,7 @@ class JobIngestionWriterTest {
     void missingPostingsAreIsolatedByBoard() {
         MutableJobSourceClient client = new MutableJobSourceClient();
         IngestionService service = new IngestionService(
-                List.of(client),
+                new JobSourceRegistry(List.of(client)),
                 writer,
                 runRecorder
         );
@@ -199,7 +199,7 @@ class JobIngestionWriterTest {
     void failedWriterTransactionRollsBackJobsAndRecordsFailure() {
         MutableJobSourceClient client = new MutableJobSourceClient();
         IngestionService service = new IngestionService(
-                List.of(client),
+                new JobSourceRegistry(List.of(client)),
                 writer,
                 runRecorder
         );
@@ -390,6 +390,10 @@ class JobIngestionWriterTest {
         @Override
         public JobSource source() {
             return JobSource.GREENHOUSE;
+        }
+
+        @Override
+        public void validateSourceAccount(String sourceAccount) {
         }
 
         @Override

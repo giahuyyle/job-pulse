@@ -15,6 +15,8 @@ import java.time.Duration;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.regex.Pattern;
 
 @Component
@@ -26,6 +28,8 @@ public class GreenhouseJobSourceClient implements JobSourceClient {
             Pattern.compile("[A-Za-z0-9_-]{1,160}");
 
     private final RestClient restClient;
+    private final ConcurrentMap<String, String> boardNames =
+            new ConcurrentHashMap<>();
 
     public GreenhouseJobSourceClient() {
         this(RestClient.builder()
@@ -45,23 +49,23 @@ public class GreenhouseJobSourceClient implements JobSourceClient {
 
     @Override
     public List<ExternalJob> fetchAll(String sourceAccount) {
-        validateBoardToken(sourceAccount);
+        validateSourceAccount(sourceAccount);
 
-        BoardResponse board = restClient.get()
-                .uri("/{boardToken}", sourceAccount)
-                .retrieve()
-                .body(BoardResponse.class);
+        String company = boardNames.computeIfAbsent(
+                sourceAccount,
+                this::fetchBoardName
+        );
         JobsResponse response = restClient.get()
                 .uri("/{boardToken}/jobs?content=true", sourceAccount)
                 .retrieve()
                 .body(JobsResponse.class);
 
-        validateResponse(board, response);
+        validateJobsResponse(response);
 
         return response.jobs().stream()
                 .map(job -> new ExternalJob(
                         Long.toString(job.id()),
-                        board.name().strip(),
+                        company,
                         job.title(),
                         job.location() == null
                                 ? null
@@ -85,7 +89,8 @@ public class GreenhouseJobSourceClient implements JobSourceClient {
         return requestFactory;
     }
 
-    private static void validateBoardToken(String sourceAccount) {
+    @Override
+    public void validateSourceAccount(String sourceAccount) {
         if (sourceAccount == null
                 || !BOARD_TOKEN.matcher(sourceAccount).matches()) {
             throw new IllegalArgumentException(
@@ -94,15 +99,20 @@ public class GreenhouseJobSourceClient implements JobSourceClient {
         }
     }
 
-    private static void validateResponse(
-            BoardResponse board,
-            JobsResponse response
-    ) {
+    private String fetchBoardName(String sourceAccount) {
+        BoardResponse board = restClient.get()
+                .uri("/{boardToken}", sourceAccount)
+                .retrieve()
+                .body(BoardResponse.class);
         if (board == null || isBlank(board.name())) {
             throw new IllegalStateException(
                     "Greenhouse board response is missing its name"
             );
         }
+        return board.name().strip();
+    }
+
+    private static void validateJobsResponse(JobsResponse response) {
         if (response == null || response.jobs() == null) {
             throw new IllegalStateException(
                     "Greenhouse jobs response is missing its jobs array"

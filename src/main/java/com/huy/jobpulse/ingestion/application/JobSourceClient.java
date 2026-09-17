@@ -8,5 +8,7 @@ public interface JobSourceClient {
 
     JobSource source();
 
+    void validateSourceAccount(String sourceAccount);
+
     List<ExternalJob> fetchAll(String sourceAccount);
 }

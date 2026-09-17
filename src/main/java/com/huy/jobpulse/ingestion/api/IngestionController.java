@@ -1,7 +1,7 @@
 package com.huy.jobpulse.ingestion.api;
 
 import com.huy.jobpulse.ingestion.application.IngestionResult;
-import com.huy.jobpulse.ingestion.application.IngestionService;
+import com.huy.jobpulse.ingestion.application.IngestionCoordinator;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -12,17 +12,17 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/ingestions")
 public class IngestionController {
 
-    private final IngestionService ingestionService;
+    private final IngestionCoordinator ingestionCoordinator;
 
-    public IngestionController(IngestionService ingestionService) {
-        this.ingestionService = ingestionService;
+    public IngestionController(IngestionCoordinator ingestionCoordinator) {
+        this.ingestionCoordinator = ingestionCoordinator;
     }
 
     @PostMapping
     public IngestionResult ingest(
             @Valid @RequestBody IngestionRequest request
     ) {
-        return ingestionService.ingest(
+        return ingestionCoordinator.ingest(
                 request.source(),
                 request.sourceAccount()
         );

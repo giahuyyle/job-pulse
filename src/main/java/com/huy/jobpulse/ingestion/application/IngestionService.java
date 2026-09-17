@@ -3,38 +3,32 @@ package com.huy.jobpulse.ingestion.application;
 import com.huy.jobpulse.jobs.domain.JobSource;
 import org.springframework.stereotype.Service;
 
-import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
-public class IngestionService {
+public class IngestionService implements IngestionCoordinator {
 
-    private final Map<JobSource, JobSourceClient> clients;
+    private final JobSourceRegistry sourceRegistry;
     private final IngestionWriter writer;
     private final RunRecorder runRecorder;
+    private final Set<IngestionKey> activeIngestions =
+            ConcurrentHashMap.newKeySet();
 
     public IngestionService(
-            List<JobSourceClient> clients,
+            JobSourceRegistry sourceRegistry,
             IngestionWriter writer,
             RunRecorder runRecorder
     ) {
-        this.clients = new EnumMap<>(JobSource.class);
-        for (JobSourceClient client : clients) {
-            JobSourceClient previous = this.clients.put(client.source(), client);
-            if (previous != null) {
-                throw new IllegalStateException(
-                        "Multiple clients configured for source " + client.source()
-                );
-            }
-        }
+        this.sourceRegistry = sourceRegistry;
         this.writer = writer;
         this.runRecorder = runRecorder;
     }
 
+    @Override
     public IngestionResult ingest(
             JobSource source,
             String sourceAccount
@@ -47,15 +41,19 @@ public class IngestionService {
         }
 
         String normalizedSourceAccount = sourceAccount.strip();
-        JobSourceClient client = clients.get(source);
-        if (client == null) {
-            throw new IllegalArgumentException(
-                    "Ingestion is not supported for source " + source
+        JobSourceClient client = sourceRegistry.require(source);
+        client.validateSourceAccount(normalizedSourceAccount);
+        IngestionKey key = new IngestionKey(source, normalizedSourceAccount);
+        if (!activeIngestions.add(key)) {
+            throw new IngestionAlreadyRunningException(
+                    "Ingestion is already running for "
+                            + source + "/" + normalizedSourceAccount
             );
         }
 
-        UUID runId = runRecorder.start(source, normalizedSourceAccount);
+        UUID runId = null;
         try {
+            runId = runRecorder.start(source, normalizedSourceAccount);
             List<ExternalJob> jobs = List.copyOf(
                     client.fetchAll(normalizedSourceAccount)
             );
@@ -76,8 +74,12 @@ public class IngestionService {
                     jobs
             );
         } catch (RuntimeException exception) {
-            runRecorder.failIfRunning(runId, exception.getMessage());
+            if (runId != null) {
+                runRecorder.failIfRunning(runId, exception.getMessage());
+            }
             throw exception;
+        } finally {
+            activeIngestions.remove(key);
         }
     }
 
@@ -104,5 +106,11 @@ public class IngestionService {
 
     private static boolean isBlank(String value) {
         return value == null || value.isBlank();
+    }
+
+    private record IngestionKey(
+            JobSource source,
+            String sourceAccount
+    ) {
     }
 }

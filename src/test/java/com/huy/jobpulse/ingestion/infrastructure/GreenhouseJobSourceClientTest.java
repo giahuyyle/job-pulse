@@ -69,6 +69,24 @@ class GreenhouseJobSourceClientTest {
     }
 
     @Test
+    void cachesBoardNameAcrossFetches() throws IOException {
+        expectJson("/example", "fixtures/greenhouse-board.json");
+        expectJson(
+                "/example/jobs?content=true",
+                "fixtures/greenhouse-jobs.json"
+        );
+        expectJson(
+                "/example/jobs?content=true",
+                "fixtures/greenhouse-jobs.json"
+        );
+
+        client.fetchAll("example");
+        client.fetchAll("example");
+
+        server.verify();
+    }
+
+    @Test
     void rejectsResponseWithMissingJobsArray() {
         server.expect(once(), requestTo(url("/example")))
                 .andRespond(withSuccess(
