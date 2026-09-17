@@ -78,6 +78,12 @@ public class JobPosting {
     @Column(name = "content_hash", nullable = false, length = 64)
     private String contentHash;
 
+    @Column(name = "consecutive_missing_runs", nullable = false)
+    private int consecutiveMissingRuns;
+
+    @Column(name = "closed_at")
+    private Instant closedAt;
+
     @Version
     private long version;
 
@@ -230,19 +236,31 @@ public class JobPosting {
         return description;
     }
 
-    // Custom methods
-    public void markSeen(Instant observedAt) {
-        this.lastSeenAt = observedAt;
+    public Instant getLastSeenAt() {
+        return lastSeenAt;
     }
 
-    public void close(Instant observedAt) {
-        this.status = JobStatus.CLOSED;
-        this.lastSeenAt = observedAt;
+    public int getConsecutiveMissingRuns() {
+        return consecutiveMissingRuns;
     }
 
-    public void reopen(Instant observedAt) {
-        this.status = JobStatus.ACTIVE;
-        this.lastSeenAt = observedAt;
+    public Instant getClosedAt() {
+        return closedAt;
+    }
+
+    public boolean recordMissing(Instant observedAt) {
+        if (status == JobStatus.CLOSED) {
+            return false;
+        }
+
+        consecutiveMissingRuns++;
+        if (consecutiveMissingRuns < 2) {
+            return false;
+        }
+
+        status = JobStatus.CLOSED;
+        closedAt = Objects.requireNonNull(observedAt);
+        return true;
     }
 
     public boolean refresh(
@@ -273,6 +291,7 @@ public class JobPosting {
                 applyUrl
         );
 
+        boolean wasClosed = this.status == JobStatus.CLOSED;
         boolean changed = !Objects.equals(this.company, normalizedCompany)
                 || !Objects.equals(this.title, normalizedTitle)
                 || !Objects.equals(this.location, location)
@@ -282,7 +301,7 @@ public class JobPosting {
                 || !Objects.equals(this.applyUrl, normalizedApplyUrl)
                 || !Objects.equals(this.postedAt, postedAt)
                 || !Objects.equals(this.contentHash, newContentHash)
-                || this.status != JobStatus.ACTIVE;
+                || wasClosed;
 
         if (changed) {
             this.company = normalizedCompany;
@@ -294,10 +313,12 @@ public class JobPosting {
             this.applyUrl = normalizedApplyUrl;
             this.postedAt = postedAt;
             this.contentHash = newContentHash;
-            this.status = JobStatus.ACTIVE;
         }
 
-        this.lastSeenAt = observedAt;
+        this.lastSeenAt = Objects.requireNonNull(observedAt);
+        this.consecutiveMissingRuns = 0;
+        this.status = JobStatus.ACTIVE;
+        this.closedAt = null;
         return changed;
     }
 }

@@ -3,12 +3,19 @@ package com.huy.jobpulse.ingestion.application;
 import com.huy.jobpulse.jobs.domain.JobSource;
 
 import java.util.List;
+import java.util.UUID;
 
 public interface IngestionWriter {
 
-    IngestionResult upsert(
+    IngestionResult apply(
+            UUID runId,
             JobSource source,
             String sourceAccount,
             List<ExternalJob> jobs
+    );
+
+    boolean hasExistingPostings(
+            JobSource source,
+            String sourceAccount
     );
 }
