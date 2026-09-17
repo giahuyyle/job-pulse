@@ -1,0 +1,20 @@
+{
+  "jobs": [
+    {
+      "id": 101,
+      "title": "Backend Engineer",
+      "absolute_url": "https://boards.greenhouse.io/example/jobs/101",
+      "location": {"name": "Taipei"},
+      "content": "Build reliable APIs",
+      "internal_job_id": 9001
+    },
+    {
+      "id": 102,
+      "title": "Platform Engineer",
+      "absolute_url": "https://boards.greenhouse.io/example/jobs/102",
+      "location": null,
+      "content": "Improve developer infrastructure"
+    }
+  ],
+  "meta": {"total": 2}
+}

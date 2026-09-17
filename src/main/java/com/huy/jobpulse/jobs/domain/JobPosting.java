@@ -10,6 +10,7 @@ import jakarta.persistence.UniqueConstraint;
 import jakarta.persistence.Version;
 
 import java.time.Instant;
+import java.util.Objects;
 import java.util.UUID;
 
 @Entity
@@ -225,6 +226,10 @@ public class JobPosting {
         return postedAt;
     }
 
+    public String getDescription() {
+        return description;
+    }
+
     // Custom methods
     public void markSeen(Instant observedAt) {
         this.lastSeenAt = observedAt;
@@ -238,5 +243,61 @@ public class JobPosting {
     public void reopen(Instant observedAt) {
         this.status = JobStatus.ACTIVE;
         this.lastSeenAt = observedAt;
+    }
+
+    public boolean refresh(
+            String company,
+            String title,
+            String location,
+            String description,
+            String employmentType,
+            RemotePolicy remotePolicy,
+            String applyUrl,
+            Instant postedAt,
+            Instant observedAt
+    ) {
+        requireText(company, "company");
+        requireText(title, "title");
+        requireText(applyUrl, "applyUrl");
+
+        String normalizedCompany = company.strip();
+        String normalizedTitle = title.strip();
+        String normalizedApplyUrl = applyUrl.strip();
+        RemotePolicy normalizedRemotePolicy = remotePolicy == null
+                ? RemotePolicy.UNSPECIFIED
+                : remotePolicy;
+        String newContentHash = JobFingerprint.create(
+                title,
+                location,
+                description,
+                applyUrl
+        );
+
+        boolean changed = !Objects.equals(this.company, normalizedCompany)
+                || !Objects.equals(this.title, normalizedTitle)
+                || !Objects.equals(this.location, location)
+                || !Objects.equals(this.description, description)
+                || !Objects.equals(this.employmentType, employmentType)
+                || this.remotePolicy != normalizedRemotePolicy
+                || !Objects.equals(this.applyUrl, normalizedApplyUrl)
+                || !Objects.equals(this.postedAt, postedAt)
+                || !Objects.equals(this.contentHash, newContentHash)
+                || this.status != JobStatus.ACTIVE;
+
+        if (changed) {
+            this.company = normalizedCompany;
+            this.title = normalizedTitle;
+            this.location = location;
+            this.description = description;
+            this.employmentType = employmentType;
+            this.remotePolicy = normalizedRemotePolicy;
+            this.applyUrl = normalizedApplyUrl;
+            this.postedAt = postedAt;
+            this.contentHash = newContentHash;
+            this.status = JobStatus.ACTIVE;
+        }
+
+        this.lastSeenAt = observedAt;
+        return changed;
     }
 }
