@@ -19,6 +19,18 @@ spring:
   flyway: # owns db migrations
     enabled: true
 
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:jobpulse}
+    password: ${RABBITMQ_PASSWORD:jobpulse}
+    publisher-confirm-type: correlated
+    listener:
+      simple:
+        concurrency: 1
+        max-concurrency: 1
+        default-requeue-rejected: true
+
 management:
   endpoints:
     web:

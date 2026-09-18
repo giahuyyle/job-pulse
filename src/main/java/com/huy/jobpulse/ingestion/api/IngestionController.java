@@ -1,41 +1,32 @@
 package com.huy.jobpulse.ingestion.api;
 
-import com.huy.jobpulse.ingestion.application.IngestionResult;
-import com.huy.jobpulse.ingestion.application.IngestionCoordinator;
-import com.huy.jobpulse.ingestion.application.IngestionTargetService;
+import com.huy.jobpulse.ingestion.application.IngestionRequestService;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/ingestions")
 public class IngestionController {
 
-    private final IngestionCoordinator ingestionCoordinator;
-    private final IngestionTargetService targetService;
+    private final IngestionRequestService requestService;
 
-    public IngestionController(
-            IngestionCoordinator ingestionCoordinator,
-            IngestionTargetService targetService
-    ) {
-        this.ingestionCoordinator = ingestionCoordinator;
-        this.targetService = targetService;
+    public IngestionController(IngestionRequestService requestService) {
+        this.requestService = requestService;
     }
 
     @PostMapping
-    public IngestionResult ingest(
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    public IngestionRequestResponse ingest(
             @Valid @RequestBody IngestionRequest request
     ) {
-        String company = targetService.findCompany(
+        return IngestionRequestResponse.from(requestService.request(
                 request.source(),
-                request.sourceAccount().strip()
-        ).orElse(request.sourceAccount());
-        return ingestionCoordinator.ingest(
-                request.source(),
-                request.sourceAccount(),
-                company
-        );
+                request.sourceAccount()
+        ));
     }
 }

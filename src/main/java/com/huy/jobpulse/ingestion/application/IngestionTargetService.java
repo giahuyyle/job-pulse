@@ -10,9 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
-import java.time.Instant;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -64,42 +62,11 @@ public class IngestionTargetService {
         return repository.findAllByOrderByCompanyAsc();
     }
 
-    @Transactional(readOnly = true)
-    public Optional<String> findCompany(
-            JobSource source,
-            String sourceAccount
-    ) {
-        return repository.findBySourceAndSourceAccount(source, sourceAccount)
-                .map(IngestionTarget::getCompany);
-    }
-
     @Transactional
     public IngestionTarget setEnabled(UUID id, boolean enabled) {
         IngestionTarget target = require(id);
         target.setEnabled(enabled, clock.instant());
         return target;
-    }
-
-    @Transactional(readOnly = true)
-    public List<IngestionTarget> findDue(Instant now) {
-        return repository
-                .findTop10ByEnabledTrueAndNextRunAtLessThanEqualOrderByNextRunAtAsc(
-                        now
-                );
-    }
-
-    @Transactional
-    public void markSucceeded(UUID id, Instant completedAt) {
-        require(id).markSucceeded(completedAt);
-    }
-
-    @Transactional
-    public void markFailed(
-            UUID id,
-            Instant completedAt,
-            String message
-    ) {
-        require(id).markFailed(completedAt, message);
     }
 
     private IngestionTarget require(UUID id) {

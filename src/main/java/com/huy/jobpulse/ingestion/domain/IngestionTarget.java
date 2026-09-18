@@ -117,6 +117,14 @@ public class IngestionTarget {
         );
     }
 
+    public void markScheduled(Instant now) {
+        nextRunAt = nextRunWithOffset(
+                Objects.requireNonNull(now),
+                id,
+                intervalMinutes
+        );
+    }
+
     public void markFailed(Instant now, String message) {
         Instant failedAt = Objects.requireNonNull(now);
         lastError = message == null || message.isBlank()
