@@ -48,7 +48,8 @@ public class IngestionTargetScheduler {
         try {
             ingestionCoordinator.ingest(
                     target.getSource(),
-                    target.getSourceAccount()
+                    target.getSourceAccount(),
+                    target.getCompany()
             );
         } catch (IngestionAlreadyRunningException exception) {
             logger.debug(

@@ -132,15 +132,4 @@ public class JobIngestionWriter implements IngestionWriter {
         return result;
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public boolean hasExistingPostings(
-            JobSource source,
-            String sourceAccount
-    ) {
-        return repository.existsBySourceAndSourceAccount(
-                source,
-                sourceAccount
-        );
-    }
 }

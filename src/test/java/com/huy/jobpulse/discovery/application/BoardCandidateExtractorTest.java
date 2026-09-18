@@ -71,6 +71,23 @@ class BoardCandidateExtractorTest {
                 .isEqualTo(URI.create("https://jobs.eu.lever.co/acme"));
     }
 
+    @Test
+    void extractsAshbyBoardFromExactHost() {
+        BoardCandidateExtraction result = extractor.extract(
+                new FetchedCareersPage(
+                        URI.create("https://example.com/careers"),
+                        "<a href='https://jobs.ashbyhq.com/openai/job-id'>Jobs</a>"
+                )
+        );
+
+        assertThat(result.candidates()).singleElement()
+                .extracting(
+                        BoardCandidate::source,
+                        BoardCandidate::sourceAccount
+                )
+                .containsExactly(JobSource.ASHBY, "openai");
+    }
+
     private BoardCandidateExtraction extract(String url, String fixture)
             throws IOException {
         String html = new ClassPathResource(fixture)

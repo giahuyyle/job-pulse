@@ -11,4 +11,11 @@ public interface JobSourceClient {
     void validateSourceAccount(String sourceAccount);
 
     List<ExternalJob> fetchAll(String sourceAccount);
+
+    default List<ExternalJob> fetchAll(
+            String sourceAccount,
+            String company
+    ) {
+        return fetchAll(sourceAccount);
+    }
 }

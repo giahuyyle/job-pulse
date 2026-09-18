@@ -100,13 +100,6 @@ class IngestionServiceTest {
             return new IngestionResult(0, 0, 0, 0, 0);
         }
 
-        @Override
-        public boolean hasExistingPostings(
-                JobSource source,
-                String sourceAccount
-        ) {
-            return false;
-        }
     }
 
     private static class RecordingRunRecorder implements RunRecorder {

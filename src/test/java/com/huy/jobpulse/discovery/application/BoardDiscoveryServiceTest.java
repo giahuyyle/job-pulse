@@ -64,6 +64,10 @@ class BoardDiscoveryServiceTest {
     @Qualifier("fakeLeverVerifier")
     FakeBoardVerifier leverVerifier;
 
+    @Autowired
+    @Qualifier("fakeAshbyVerifier")
+    FakeBoardVerifier ashbyVerifier;
+
     @BeforeEach
     void reset() {
         seedRepository.deleteAll();
@@ -71,6 +75,7 @@ class BoardDiscoveryServiceTest {
         pageFetcher.reset();
         greenhouseVerifier.reset();
         leverVerifier.reset();
+        ashbyVerifier.reset();
     }
 
     @Test
@@ -112,6 +117,26 @@ class BoardDiscoveryServiceTest {
                 .satisfies(target -> {
                     assertThat(target.getSource()).isEqualTo(JobSource.LEVER);
                     assertThat(target.getSourceAccount()).isEqualTo("acme");
+                });
+    }
+
+    @Test
+    void ashbyLinkCreatesAshbyTarget() {
+        CompanySeed seed = seed("OpenAI", "https://openai.example/careers");
+        pageFetcher.page(
+                seed.getCareersUrl(),
+                seed.getCareersUrl(),
+                "<a href='https://jobs.ashbyhq.com/openai'>Jobs</a>"
+        );
+        ashbyVerifier.valid("openai");
+
+        DiscoveryRunResult result = discoveryService.runAll();
+
+        assertThat(result.added()).isEqualTo(1);
+        assertThat(targetRepository.findAll()).singleElement()
+                .satisfies(target -> {
+                    assertThat(target.getSource()).isEqualTo(JobSource.ASHBY);
+                    assertThat(target.getSourceAccount()).isEqualTo("openai");
                 });
     }
 
@@ -239,16 +264,24 @@ class BoardDiscoveryServiceTest {
         }
 
         @Bean
+        FakeBoardVerifier fakeAshbyVerifier() {
+            return new FakeBoardVerifier(JobSource.ASHBY);
+        }
+
+        @Bean
         @Primary
         BoardVerifierRegistry fakeBoardVerifierRegistry(
                 @Qualifier("fakeGreenhouseVerifier")
                 FakeBoardVerifier fakeGreenhouseVerifier,
                 @Qualifier("fakeLeverVerifier")
-                FakeBoardVerifier fakeLeverVerifier
+                FakeBoardVerifier fakeLeverVerifier,
+                @Qualifier("fakeAshbyVerifier")
+                FakeBoardVerifier fakeAshbyVerifier
         ) {
             return new BoardVerifierRegistry(java.util.List.of(
                     fakeGreenhouseVerifier.asVerifier(),
-                    fakeLeverVerifier.asVerifier()
+                    fakeLeverVerifier.asVerifier(),
+                    fakeAshbyVerifier.asVerifier()
             ));
         }
     }

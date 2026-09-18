@@ -20,6 +20,7 @@ public class BoardCandidateExtractor {
     private static final String GREENHOUSE_NEW = "job-boards.greenhouse.io";
     private static final String LEVER = "jobs.lever.co";
     private static final String LEVER_EU = "jobs.eu.lever.co";
+    private static final String ASHBY = "jobs.ashbyhq.com";
 
     public BoardCandidateExtraction extract(FetchedCareersPage page) {
         Document document = Jsoup.parse(
@@ -52,6 +53,7 @@ public class BoardCandidateExtractor {
             JobSource source = switch (host) {
                 case GREENHOUSE, GREENHOUSE_NEW -> JobSource.GREENHOUSE;
                 case LEVER -> JobSource.LEVER;
+                case ASHBY -> JobSource.ASHBY;
                 default -> null;
             };
             if (source == null) {

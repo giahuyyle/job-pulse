@@ -33,6 +33,15 @@ public class IngestionService implements IngestionCoordinator {
             JobSource source,
             String sourceAccount
     ) {
+        return ingest(source, sourceAccount, sourceAccount);
+    }
+
+    @Override
+    public IngestionResult ingest(
+            JobSource source,
+            String sourceAccount,
+            String company
+    ) {
         if (source == null) {
             throw new IllegalArgumentException("source must not be null");
         }
@@ -41,6 +50,9 @@ public class IngestionService implements IngestionCoordinator {
         }
 
         String normalizedSourceAccount = sourceAccount.strip();
+        String normalizedCompany = company == null || company.isBlank()
+                ? normalizedSourceAccount
+                : company.strip();
         JobSourceClient client = sourceRegistry.require(source);
         client.validateSourceAccount(normalizedSourceAccount);
         IngestionKey key = new IngestionKey(source, normalizedSourceAccount);
@@ -55,18 +67,12 @@ public class IngestionService implements IngestionCoordinator {
         try {
             runId = runRecorder.start(source, normalizedSourceAccount);
             List<ExternalJob> jobs = List.copyOf(
-                    client.fetchAll(normalizedSourceAccount)
+                    client.fetchAll(
+                            normalizedSourceAccount,
+                            normalizedCompany
+                    )
             );
             validateCompleteSnapshot(jobs);
-            if (jobs.isEmpty()
-                    && writer.hasExistingPostings(
-                            source,
-                            normalizedSourceAccount
-                    )) {
-                throw new IllegalStateException(
-                        "Refusing suspicious empty snapshot for existing board"
-                );
-            }
             return writer.apply(
                     runId,
                     source,

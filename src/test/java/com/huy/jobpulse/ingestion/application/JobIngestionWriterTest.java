@@ -113,11 +113,14 @@ class JobIngestionWriterTest {
 
         clock.advance(Duration.ofHours(1));
         client.returnJobs(List.of());
-        assertThatThrownBy(() -> service.ingest(
+        IngestionResult emptySnapshot = service.ingest(
                 JobSource.GREENHOUSE,
                 account
-        )).hasMessageContaining("suspicious empty snapshot");
-        assertMissingOnce(account, originalLastSeenAt);
+        );
+        assertThat(emptySnapshot.closed()).isEqualTo(1);
+        assertThat(find(account, "b").getStatus())
+                .isEqualTo(JobStatus.CLOSED);
+        Instant closedAt = clock.instant();
 
         clock.advance(Duration.ofHours(1));
         client.returnJobs(List.of(posting("a", "Job A")));
@@ -126,10 +129,10 @@ class JobIngestionWriterTest {
                 account
         );
         JobPosting closed = find(account, "b");
-        assertThat(closingRun.closed()).isEqualTo(1);
+        assertThat(closingRun.closed()).isZero();
         assertThat(closed.getStatus()).isEqualTo(JobStatus.CLOSED);
         assertThat(closed.getConsecutiveMissingRuns()).isEqualTo(2);
-        assertThat(closed.getClosedAt()).isEqualTo(clock.instant());
+        assertThat(closed.getClosedAt()).isEqualTo(closedAt);
         assertThat(closed.getLastSeenAt()).isEqualTo(originalLastSeenAt);
 
         clock.advance(Duration.ofHours(1));
@@ -160,7 +163,7 @@ class JobIngestionWriterTest {
                         IngestionRunStatus.SUCCEEDED,
                         IngestionRunStatus.FAILED,
                         IngestionRunStatus.FAILED,
-                        IngestionRunStatus.FAILED,
+                        IngestionRunStatus.SUCCEEDED,
                         IngestionRunStatus.SUCCEEDED,
                         IngestionRunStatus.SUCCEEDED
                 );

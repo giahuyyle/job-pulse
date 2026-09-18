@@ -13,9 +13,4 @@ public interface IngestionWriter {
             String sourceAccount,
             List<ExternalJob> jobs
     );
-
-    boolean hasExistingPostings(
-            JobSource source,
-            String sourceAccount
-    );
 }

@@ -67,13 +67,24 @@ public class LeverJobSourceClient implements JobSourceClient, BoardVerifier {
 
     @Override
     public List<ExternalJob> fetchAll(String sourceAccount) {
+        return fetchAll(sourceAccount, sourceAccount);
+    }
+
+    @Override
+    public List<ExternalJob> fetchAll(
+            String sourceAccount,
+            String company
+    ) {
         validateSourceAccount(sourceAccount);
+        if (isBlank(company)) {
+            throw new IllegalArgumentException("company must not be blank");
+        }
         LeverJob[] jobs = fetchResponse(sourceAccount);
         validateJobs(jobs);
         return List.of(jobs).stream()
                 .map(job -> new ExternalJob(
                         job.id(),
-                        sourceAccount,
+                        company.strip(),
                         job.text(),
                         job.categories() == null
                                 ? null

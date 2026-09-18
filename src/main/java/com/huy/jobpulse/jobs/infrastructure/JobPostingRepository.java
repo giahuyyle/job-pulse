@@ -25,11 +25,6 @@ public interface JobPostingRepository
             JobStatus status
     );
 
-    boolean existsBySourceAndSourceAccount(
-            JobSource source,
-            String sourceAccount
-    );
-
     long countBySourceAndSourceAccount(
             JobSource source,
             String sourceAccount

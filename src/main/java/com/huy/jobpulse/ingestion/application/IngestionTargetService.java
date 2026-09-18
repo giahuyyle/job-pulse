@@ -3,6 +3,7 @@ package com.huy.jobpulse.ingestion.application;
 import com.huy.jobpulse.ingestion.api.CreateIngestionTargetRequest;
 import com.huy.jobpulse.ingestion.domain.IngestionTarget;
 import com.huy.jobpulse.ingestion.infrastructure.IngestionTargetRepository;
+import com.huy.jobpulse.jobs.domain.JobSource;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -11,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -60,6 +62,15 @@ public class IngestionTargetService {
     @Transactional(readOnly = true)
     public List<IngestionTarget> findAll() {
         return repository.findAllByOrderByCompanyAsc();
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<String> findCompany(
+            JobSource source,
+            String sourceAccount
+    ) {
+        return repository.findBySourceAndSourceAccount(source, sourceAccount)
+                .map(IngestionTarget::getCompany);
     }
 
     @Transactional
