@@ -1,6 +1,7 @@
 package com.huy.jobpulse.ingestion.infrastructure;
 
 import com.huy.jobpulse.ingestion.application.ExternalJob;
+import com.huy.jobpulse.discovery.application.BoardVerification;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.io.ClassPathResource;
@@ -83,6 +84,39 @@ class GreenhouseJobSourceClientTest {
         client.fetchAll("example");
         client.fetchAll("example");
 
+        server.verify();
+    }
+
+    @Test
+    void verifiesBoardWithoutFetchingJobs() throws IOException {
+        expectJson("/example", "fixtures/greenhouse-board.json");
+
+        assertThat(client.verify("example"))
+                .isEqualTo(BoardVerification.verified());
+        server.verify();
+    }
+
+    @Test
+    void verificationRechecksProviderWhenNameIsCached() throws IOException {
+        expectJson("/example", "fixtures/greenhouse-board.json");
+        expectJson(
+                "/example/jobs?content=true",
+                "fixtures/greenhouse-jobs.json"
+        );
+        expectJson("/example", "fixtures/greenhouse-board.json");
+
+        client.fetchAll("example");
+        client.verify("example");
+
+        server.verify();
+    }
+
+    @Test
+    void treatsMissingBoardAsUnverified() {
+        server.expect(once(), requestTo(url("/missing")))
+                .andRespond(withStatus(HttpStatus.NOT_FOUND));
+
+        assertThat(client.verify("missing").valid()).isFalse();
         server.verify();
     }
 

@@ -2,12 +2,15 @@ package com.huy.jobpulse.ingestion.infrastructure;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.huy.jobpulse.discovery.application.BoardVerification;
+import com.huy.jobpulse.discovery.application.BoardVerifier;
 import com.huy.jobpulse.ingestion.application.ExternalJob;
 import com.huy.jobpulse.ingestion.application.JobSourceClient;
 import com.huy.jobpulse.jobs.domain.JobSource;
 import com.huy.jobpulse.jobs.domain.RemotePolicy;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 
 import java.net.http.HttpClient;
@@ -20,7 +23,8 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.regex.Pattern;
 
 @Component
-public class GreenhouseJobSourceClient implements JobSourceClient {
+public class GreenhouseJobSourceClient
+        implements JobSourceClient, BoardVerifier {
 
     private static final String BASE_URL =
             "https://boards-api.greenhouse.io/v1/boards";
@@ -96,6 +100,18 @@ public class GreenhouseJobSourceClient implements JobSourceClient {
             throw new IllegalArgumentException(
                     "Greenhouse board token must match [A-Za-z0-9_-]{1,160}"
             );
+        }
+    }
+
+    @Override
+    public BoardVerification verify(String sourceAccount) {
+        validateSourceAccount(sourceAccount);
+        try {
+            boardNames.put(sourceAccount, fetchBoardName(sourceAccount));
+            return BoardVerification.verified();
+        } catch (HttpClientErrorException.NotFound exception) {
+            boardNames.remove(sourceAccount);
+            return BoardVerification.notFound("Greenhouse board was not found");
         }
     }
 

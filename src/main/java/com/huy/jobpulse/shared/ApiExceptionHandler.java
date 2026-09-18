@@ -3,6 +3,7 @@ package com.huy.jobpulse.shared;
 import com.huy.jobpulse.jobs.application.DuplicateJobException;
 import com.huy.jobpulse.ingestion.application.DuplicateIngestionTargetException;
 import com.huy.jobpulse.ingestion.application.IngestionAlreadyRunningException;
+import com.huy.jobpulse.discovery.application.DiscoveryAlreadyRunningException;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -46,6 +47,19 @@ public class ApiExceptionHandler {
                 ProblemDetail.forStatus(HttpStatus.CONFLICT);
 
         problem.setTitle("Ingestion already running");
+        problem.setDetail(exception.getMessage());
+
+        return problem;
+    }
+
+    @ExceptionHandler(DiscoveryAlreadyRunningException.class)
+    public ProblemDetail handleDiscoveryAlreadyRunning(
+            DiscoveryAlreadyRunningException exception
+    ) {
+        ProblemDetail problem =
+                ProblemDetail.forStatus(HttpStatus.CONFLICT);
+
+        problem.setTitle("Discovery already running");
         problem.setDetail(exception.getMessage());
 
         return problem;

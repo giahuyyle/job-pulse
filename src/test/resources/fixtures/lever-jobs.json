@@ -1,0 +1,15 @@
+[
+  {
+    "id": "lever-101",
+    "text": "Platform Engineer",
+    "hostedUrl": "https://jobs.lever.co/acme/lever-101",
+    "applyUrl": "https://jobs.lever.co/acme/lever-101/apply",
+    "descriptionPlain": "Build the platform",
+    "createdAt": 1788264000000,
+    "workplaceType": "hybrid",
+    "categories": {
+      "location": "Taipei",
+      "commitment": "Full-time"
+    }
+  }
+]
