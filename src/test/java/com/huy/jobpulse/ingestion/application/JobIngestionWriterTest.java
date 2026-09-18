@@ -7,6 +7,7 @@ import com.huy.jobpulse.jobs.domain.RemotePolicy;
 import com.huy.jobpulse.ingestion.domain.IngestionRunStatus;
 import com.huy.jobpulse.ingestion.infrastructure.IngestionRunRepository;
 import com.huy.jobpulse.jobs.infrastructure.JobPostingRepository;
+import com.huy.jobpulse.jobs.infrastructure.JobEventRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -46,6 +47,9 @@ class JobIngestionWriterTest {
 
     @Autowired
     JobPostingRepository repository;
+
+    @Autowired
+    JobEventRepository eventRepository;
 
     @Autowired
     RunRecorder runRecorder;
@@ -200,6 +204,7 @@ class JobIngestionWriterTest {
 
     @Test
     void failedWriterTransactionRollsBackJobsAndRecordsFailure() {
+        long eventsBefore = eventRepository.count();
         MutableJobSourceClient client = new MutableJobSourceClient();
         IngestionService service = new IngestionService(
                 new JobSourceRegistry(List.of(client)),
@@ -218,6 +223,7 @@ class JobIngestionWriterTest {
         )).isInstanceOf(DataIntegrityViolationException.class);
 
         assertThat(countFor(account)).isZero();
+        assertThat(eventRepository.count()).isEqualTo(eventsBefore);
         assertThat(runRepository
                 .findAllBySourceAndSourceAccountOrderByStartedAtAsc(
                         JobSource.GREENHOUSE,

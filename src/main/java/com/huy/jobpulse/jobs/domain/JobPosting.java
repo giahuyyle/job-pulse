@@ -240,6 +240,18 @@ public class JobPosting {
         return lastSeenAt;
     }
 
+    public Instant getFirstSeenAt() {
+        return firstSeenAt;
+    }
+
+    public RemotePolicy getRemotePolicy() {
+        return remotePolicy;
+    }
+
+    public String getEmploymentType() {
+        return employmentType;
+    }
+
     public int getConsecutiveMissingRuns() {
         return consecutiveMissingRuns;
     }

@@ -1,11 +1,13 @@
 package com.huy.jobpulse.ingestion.application;
 
 import com.huy.jobpulse.jobs.domain.JobPosting;
+import com.huy.jobpulse.jobs.domain.JobEvent;
 import com.huy.jobpulse.jobs.domain.JobSource;
 import com.huy.jobpulse.jobs.domain.JobStatus;
 import com.huy.jobpulse.ingestion.domain.IngestionRun;
 import com.huy.jobpulse.ingestion.infrastructure.IngestionRunRepository;
 import com.huy.jobpulse.jobs.infrastructure.JobPostingRepository;
+import com.huy.jobpulse.jobs.infrastructure.JobEventRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,15 +22,18 @@ import java.util.stream.Collectors;
 public class JobIngestionWriter implements IngestionWriter {
 
     private final JobPostingRepository repository;
+    private final JobEventRepository eventRepository;
     private final IngestionRunRepository runRepository;
     private final Clock clock;
 
     public JobIngestionWriter(
             JobPostingRepository repository,
+            JobEventRepository eventRepository,
             IngestionRunRepository runRepository,
             Clock clock
     ) {
         this.repository = repository;
+        this.eventRepository = eventRepository;
         this.runRepository = runRepository;
         this.clock = clock;
     }
@@ -61,7 +66,7 @@ public class JobIngestionWriter implements IngestionWriter {
                     .orElse(null);
 
             if (existing == null) {
-                repository.save(JobPosting.create(
+                JobPosting createdPosting = repository.save(JobPosting.create(
                         source,
                         sourceAccount,
                         externalJob.sourceJobId(),
@@ -73,6 +78,10 @@ public class JobIngestionWriter implements IngestionWriter {
                         externalJob.remotePolicy(),
                         externalJob.applyUrl(),
                         externalJob.postedAt(),
+                        observedAt
+                ));
+                eventRepository.save(JobEvent.created(
+                        createdPosting.getId(),
                         observedAt
                 ));
                 created++;
