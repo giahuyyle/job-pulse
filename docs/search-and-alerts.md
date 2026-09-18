@@ -43,8 +43,8 @@ create alerts for jobs that already exist.
 ## Alert inbox
 
 Newly ingested jobs create a durable `CREATED` event in the same transaction
-as the posting. The scheduled matcher compares those events with enabled saved
-searches and inserts at most one alert per search and posting.
+as the posting. The Kafka alerts consumer compares those events with enabled
+saved searches and inserts at most one alert per search and posting.
 
 ```text
 GET   /api/v1/alerts
@@ -52,6 +52,5 @@ GET   /api/v1/alerts?unread=true
 PATCH /api/v1/alerts/{id}/read
 ```
 
-The matcher runs once per minute by default. Configure its initial and repeat
-delays with `jobpulse.alerts.match-initial-delay-ms` and
-`jobpulse.alerts.match-delay-ms`.
+Alerts consume `jobpulse.job-events.v1` independently from analytics. See
+`docs/kafka-job-events.md` for delivery and local runtime details.

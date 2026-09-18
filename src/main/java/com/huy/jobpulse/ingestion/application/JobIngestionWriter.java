@@ -2,6 +2,7 @@ package com.huy.jobpulse.ingestion.application;
 
 import com.huy.jobpulse.jobs.domain.JobPosting;
 import com.huy.jobpulse.jobs.domain.JobEvent;
+import com.huy.jobpulse.jobs.domain.JobEventType;
 import com.huy.jobpulse.jobs.domain.JobSource;
 import com.huy.jobpulse.jobs.domain.JobStatus;
 import com.huy.jobpulse.ingestion.domain.IngestionRun;
@@ -80,8 +81,9 @@ public class JobIngestionWriter implements IngestionWriter {
                         externalJob.postedAt(),
                         observedAt
                 ));
-                eventRepository.save(JobEvent.created(
-                        createdPosting.getId(),
+                eventRepository.save(JobEvent.capture(
+                        createdPosting,
+                        JobEventType.CREATED,
                         observedAt
                 ));
                 created++;
@@ -101,6 +103,11 @@ public class JobIngestionWriter implements IngestionWriter {
             );
 
             if (changed) {
+                eventRepository.save(JobEvent.capture(
+                        existing,
+                        JobEventType.UPDATED,
+                        observedAt
+                ));
                 updated++;
             } else {
                 unchanged++;
@@ -119,6 +126,11 @@ public class JobIngestionWriter implements IngestionWriter {
         for (JobPosting posting : activePostings) {
             if (!seenSourceJobIds.contains(posting.getSourceJobId())
                     && posting.recordMissing(observedAt)) {
+                eventRepository.save(JobEvent.capture(
+                        posting,
+                        JobEventType.CLOSED,
+                        observedAt
+                ));
                 closed++;
             }
         }

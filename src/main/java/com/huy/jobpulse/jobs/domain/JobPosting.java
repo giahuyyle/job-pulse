@@ -204,6 +204,10 @@ public class JobPosting {
         return source;
     }
 
+    public String getSourceAccount() {
+        return sourceAccount;
+    }
+
     public String getCompany() {
         return company;
     }

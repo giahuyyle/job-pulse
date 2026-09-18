@@ -2,9 +2,10 @@ package com.huy.jobpulse.alerts;
 
 import com.huy.jobpulse.alerts.api.CreateSavedSearchRequest;
 import com.huy.jobpulse.alerts.api.UpdateSavedSearchRequest;
-import com.huy.jobpulse.alerts.application.AlertMatcherService;
+import com.huy.jobpulse.alerts.application.AlertEventHandler;
 import com.huy.jobpulse.alerts.application.AlertService;
 import com.huy.jobpulse.alerts.application.SavedSearchService;
+import com.huy.jobpulse.analytics.AnalyticsEventHandler;
 import com.huy.jobpulse.alerts.domain.SavedSearch;
 import com.huy.jobpulse.alerts.infrastructure.JobAlertRepository;
 import com.huy.jobpulse.alerts.infrastructure.SavedSearchRepository;
@@ -16,6 +17,8 @@ import com.huy.jobpulse.jobs.application.JobSearchCriteria;
 import com.huy.jobpulse.jobs.application.JobSearchFilters;
 import com.huy.jobpulse.jobs.application.JobSearchSort;
 import com.huy.jobpulse.jobs.domain.JobPosting;
+import com.huy.jobpulse.jobs.domain.JobEvent;
+import com.huy.jobpulse.jobs.domain.JobEventType;
 import com.huy.jobpulse.jobs.domain.JobSource;
 import com.huy.jobpulse.jobs.domain.RemotePolicy;
 import com.huy.jobpulse.jobs.infrastructure.JobEventRepository;
@@ -30,6 +33,7 @@ import org.springframework.boot.testcontainers.service.connection.ServiceConnect
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
@@ -61,15 +65,19 @@ class SearchAndAlertsIntegrationTest {
     @Autowired JobAlertRepository alertRepository;
     @Autowired IngestionRunRepository runRepository;
     @Autowired SavedSearchService savedSearchService;
-    @Autowired AlertMatcherService matcher;
+    @Autowired AlertEventHandler alertHandler;
+    @Autowired AnalyticsEventHandler analyticsHandler;
     @Autowired AlertService alertService;
     @Autowired IngestionWriter ingestionWriter;
     @Autowired RunRecorder runRecorder;
     @Autowired MutableClock clock;
+    @Autowired JdbcTemplate jdbc;
 
     @BeforeEach
     void cleanDatabase() {
         alertRepository.deleteAll();
+        jdbc.update("DELETE FROM job_event_consumptions");
+        jdbc.update("DELETE FROM daily_job_stats");
         eventRepository.deleteAll();
         savedSearchRepository.deleteAll();
         jobRepository.deleteAll();
@@ -166,16 +174,32 @@ class SearchAndAlertsIntegrationTest {
         ingest("alerts-board", jobs);
 
         assertThat(eventRepository.count()).isEqualTo(2);
-        assertThat(matcher.processBatch()).isEqualTo(2);
+        eventRepository.findAll().forEach(this::consume);
         assertThat(alertRepository.findAll()).singleElement().satisfies(alert -> {
             assertThat(alert.getSavedSearchId()).isEqualTo(search.getId());
             assertThat(alert.getReadAt()).isNull();
         });
 
-        assertThat(matcher.processBatch()).isZero();
+        eventRepository.findAll().forEach(this::consume);
         ingest("alerts-board", jobs);
-        assertThat(matcher.processBatch()).isZero();
+        eventRepository.findAll().forEach(this::consume);
         assertThat(alertRepository.count()).isOne();
+        assertThat(dailyCount("CREATED")).isEqualTo(2);
+
+        List<ExternalJob> changedJobs = List.of(
+                external(
+                        "matching",
+                        "Principal Backend Engineer",
+                        RemotePolicy.REMOTE
+                ),
+                external("hybrid", "Backend Engineer", RemotePolicy.HYBRID)
+        );
+        ingest("alerts-board", changedJobs);
+        eventRepository.findAll().forEach(this::consume);
+        assertThat(eventRepository.countByEventType(JobEventType.UPDATED))
+                .isOne();
+        assertThat(alertRepository.count()).isOne();
+        assertThat(dailyCount("CREATED")).isEqualTo(2);
 
         var alert = alertService.findAll(true).getFirst();
         alertService.markRead(alert.alert().getId());
@@ -186,12 +210,40 @@ class SearchAndAlertsIntegrationTest {
         savedSearchService.update(search.getId(), disable);
         clock.advance(Duration.ofMinutes(1));
         ingest("alerts-board", List.of(
-                external("matching", "Backend Engineer", RemotePolicy.REMOTE),
+                external(
+                        "matching",
+                        "Principal Backend Engineer",
+                        RemotePolicy.REMOTE
+                ),
                 external("hybrid", "Backend Engineer", RemotePolicy.HYBRID),
                 external("future", "Backend Engineer", RemotePolicy.REMOTE)
         ));
-        assertThat(matcher.processBatch()).isOne();
+        eventRepository.findAll().forEach(this::consume);
         assertThat(alertRepository.count()).isOne();
+        assertThat(dailyCount("CREATED")).isEqualTo(3);
+
+        ingest("alerts-board", changedJobs);
+        ingest("alerts-board", changedJobs);
+        eventRepository.findAll().forEach(this::consume);
+        assertThat(eventRepository.countByEventType(JobEventType.CLOSED))
+                .isOne();
+        assertThat(dailyCount("CLOSED")).isOne();
+    }
+
+    private void consume(JobEvent event) {
+        var envelope = com.huy.jobpulse.events.JobEventEnvelope.from(event);
+        alertHandler.process(envelope);
+        analyticsHandler.process(envelope);
+    }
+
+    private long dailyCount(String eventType) {
+        Long count = jdbc.queryForObject(
+                "SELECT coalesce(sum(count), 0) FROM daily_job_stats "
+                        + "WHERE event_type = ?",
+                Long.class,
+                eventType
+        );
+        return count == null ? 0 : count;
     }
 
     private org.springframework.data.domain.Page<com.huy.jobpulse.jobs.application.JobSearchHit>

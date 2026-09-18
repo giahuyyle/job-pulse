@@ -1,6 +1,7 @@
 package com.huy.jobpulse.ingestion.application;
 
 import com.huy.jobpulse.jobs.domain.JobPosting;
+import com.huy.jobpulse.jobs.domain.JobEventType;
 import com.huy.jobpulse.jobs.domain.JobSource;
 import com.huy.jobpulse.jobs.domain.JobStatus;
 import com.huy.jobpulse.jobs.domain.RemotePolicy;
@@ -62,6 +63,12 @@ class JobIngestionWriterTest {
 
     @Test
     void closesAfterTwoSuccessfulMissesAndReopensTheSamePosting() {
+        long closedBefore = eventRepository.countByEventType(
+                JobEventType.CLOSED
+        );
+        long updatedBefore = eventRepository.countByEventType(
+                JobEventType.UPDATED
+        );
         MutableJobSourceClient client = new MutableJobSourceClient();
         IngestionService service = new IngestionService(
                 new JobSourceRegistry(List.of(client)),
@@ -124,6 +131,8 @@ class JobIngestionWriterTest {
         assertThat(emptySnapshot.closed()).isEqualTo(1);
         assertThat(find(account, "b").getStatus())
                 .isEqualTo(JobStatus.CLOSED);
+        assertThat(eventRepository.countByEventType(JobEventType.CLOSED))
+                .isEqualTo(closedBefore + 1);
         Instant closedAt = clock.instant();
 
         clock.advance(Duration.ofHours(1));
@@ -155,6 +164,8 @@ class JobIngestionWriterTest {
         assertThat(reopened.getConsecutiveMissingRuns()).isZero();
         assertThat(reopened.getClosedAt()).isNull();
         assertThat(reopened.getLastSeenAt()).isEqualTo(clock.instant());
+        assertThat(eventRepository.countByEventType(JobEventType.UPDATED))
+                .isEqualTo(updatedBefore + 1);
 
         assertThat(runRepository
                 .findAllBySourceAndSourceAccountOrderByStartedAtAsc(
@@ -239,6 +250,13 @@ class JobIngestionWriterTest {
 
     @Test
     void createsLeavesUnchangedAndUpdatesBySourceIdentity() {
+        long eventsBefore = eventRepository.count();
+        long createdBefore = eventRepository.countByEventType(
+                JobEventType.CREATED
+        );
+        long updatedBefore = eventRepository.countByEventType(
+                JobEventType.UPDATED
+        );
         List<ExternalJob> initialJobs = List.of(
                 posting("101", "Build APIs"),
                 posting("102", "Improve infrastructure")
@@ -253,6 +271,8 @@ class JobIngestionWriterTest {
 
         assertThat(first).isEqualTo(new IngestionResult(2, 2, 0, 0, 0));
         assertThat(countFor("example")).isEqualTo(2);
+        assertThat(eventRepository.countByEventType(JobEventType.CREATED))
+                .isEqualTo(createdBefore + 2);
 
         IngestionResult second = apply(
                 JobSource.GREENHOUSE,
@@ -262,6 +282,7 @@ class JobIngestionWriterTest {
 
         assertThat(second).isEqualTo(new IngestionResult(2, 0, 0, 2, 0));
         assertThat(countFor("example")).isEqualTo(2);
+        assertThat(eventRepository.count()).isEqualTo(eventsBefore + 2);
 
         IngestionResult third = apply(
                 JobSource.GREENHOUSE,
@@ -277,6 +298,8 @@ class JobIngestionWriterTest {
         assertThat(countFor("example")).isEqualTo(2);
         assertThat(updated.getId()).isEqualTo(originalId);
         assertThat(updated.getDescription()).isEqualTo("Build distributed APIs");
+        assertThat(eventRepository.countByEventType(JobEventType.UPDATED))
+                .isEqualTo(updatedBefore + 1);
 
         IngestionResult fourth = apply(
                 JobSource.GREENHOUSE,
@@ -294,6 +317,8 @@ class JobIngestionWriterTest {
         assertThat(fourth).isEqualTo(new IngestionResult(2, 0, 1, 1, 0));
         assertThat(find("101").getCompany()).isEqualTo("Renamed Company");
         assertThat(find("101").getId()).isEqualTo(originalId);
+        assertThat(eventRepository.countByEventType(JobEventType.UPDATED))
+                .isEqualTo(updatedBefore + 2);
     }
 
     @Test
