@@ -31,3 +31,10 @@ build/
 
 ### VS Code ###
 .vscode/
+
+frontend/node_modules/
+frontend/dist/
+frontend/*.tsbuildinfo
+.DS_Store
+__pycache__/
+*.py[cod]

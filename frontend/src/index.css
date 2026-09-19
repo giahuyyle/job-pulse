@@ -1,0 +1,29 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --color-ink: #14201c;
+  --color-canvas: #f4f5ef;
+  --color-pine: #163f33;
+  --color-mint: #c9f269;
+  --color-coral: #ff795f;
+}
+
+@layer base {
+  * { @apply border-black/10; }
+  body { @apply m-0 bg-canvas text-ink antialiased; }
+  button, a, input, select { @apply outline-none; }
+  button, a { @apply transition-all duration-200; }
+  ::selection { @apply bg-mint text-pine; }
+}
+
+@layer components {
+  .panel { @apply rounded-[1.5rem] border border-black/8 bg-white shadow-[0_12px_40px_rgba(20,32,28,.06)]; }
+  .field { @apply h-11 w-full rounded-xl border border-black/12 bg-white px-3.5 text-sm placeholder:text-black/35 focus:border-pine focus:ring-3 focus:ring-pine/10; }
+  .btn { @apply inline-flex h-10 items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-45; }
+  .btn-primary { @apply inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-pine px-4 text-sm font-bold text-white hover:-translate-y-0.5 hover:bg-[#205644] disabled:cursor-not-allowed disabled:opacity-45; }
+  .btn-secondary { @apply inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-black/10 bg-white px-4 text-sm font-bold hover:border-black/25 hover:bg-black/[.02] disabled:cursor-not-allowed disabled:opacity-45; }
+  .eyebrow { @apply text-[11px] font-extrabold uppercase tracking-[.18em] text-pine/55; }
+  .status-dot { @apply inline-block size-1.5 rounded-full; }
+}
