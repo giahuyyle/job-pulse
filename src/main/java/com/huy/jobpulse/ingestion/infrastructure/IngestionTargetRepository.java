@@ -13,6 +13,8 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 public interface IngestionTargetRepository
         extends JpaRepository<IngestionTarget, UUID> {
@@ -43,6 +45,12 @@ public interface IngestionTargetRepository
     Optional<IngestionTarget> findLockedById(@Param("id") UUID id);
 
     List<IngestionTarget> findAllByOrderByCompanyAsc();
+
+    Page<IngestionTarget> findAllByOrderByCompanyAsc(Pageable pageable);
+
+    long countByEnabledTrue();
+
+    long countByEnabledTrueAndNextRunAtLessThanEqual(Instant now);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     List<IngestionTarget>

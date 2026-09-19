@@ -17,13 +17,13 @@ public class LocalAdminGuard {
                     .isLoopbackAddress()) {
                 throw new ResponseStatusException(
                         HttpStatus.FORBIDDEN,
-                        "Discovery administration is restricted to localhost"
+                        "Administration is restricted to localhost"
                 );
             }
         } catch (UnknownHostException exception) {
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN,
-                    "Could not validate discovery client address",
+                    "Could not validate admin client address",
                     exception
             );
         }

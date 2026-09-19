@@ -11,6 +11,8 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 public interface IngestionRequestRepository
         extends JpaRepository<IngestionRequest, UUID> {
@@ -20,6 +22,10 @@ public interface IngestionRequestRepository
             UUID targetId,
             List<IngestionRequestStatus> statuses
     );
+
+    long countByStatus(IngestionRequestStatus status);
+
+    Page<IngestionRequest> findAllByOrderByCreatedAtDesc(Pageable pageable);
 
     List<IngestionRequest>
     findTop50ByPublishedAtIsNullAndStatusOrderByCreatedAtAsc(

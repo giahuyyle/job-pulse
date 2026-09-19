@@ -41,11 +41,16 @@ spring:
     listener:
       ack-mode: record
 
+jobpulse:
+  providers:
+    greenhouse:
+      base-url: ${GREENHOUSE_BASE_URL:https://boards-api.greenhouse.io}
+
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info,metrics,prometheus
 
 server:
   port: 8080

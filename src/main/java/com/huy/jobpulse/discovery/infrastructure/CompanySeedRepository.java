@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import com.huy.jobpulse.discovery.domain.CompanySeedStatus;
 
 public interface CompanySeedRepository
         extends JpaRepository<CompanySeed, UUID> {
@@ -13,4 +14,8 @@ public interface CompanySeedRepository
     Optional<CompanySeed> findByCareersUrl(String careersUrl);
 
     List<CompanySeed> findAllByOrderByCompanyNameAsc();
+
+    List<CompanySeed> findAllByStatusOrderByCompanyNameAsc(
+            CompanySeedStatus status
+    );
 }

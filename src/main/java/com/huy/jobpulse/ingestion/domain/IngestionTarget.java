@@ -149,6 +149,16 @@ public class IngestionTarget {
         }
     }
 
+    public void setIntervalMinutes(int intervalMinutes, Instant now) {
+        validateInterval(intervalMinutes);
+        this.intervalMinutes = intervalMinutes;
+        if (enabled) {
+            this.nextRunAt = nextRunWithOffset(
+                    Objects.requireNonNull(now), id, intervalMinutes
+            );
+        }
+    }
+
     private static Instant nextRunWithOffset(
             Instant now,
             UUID id,

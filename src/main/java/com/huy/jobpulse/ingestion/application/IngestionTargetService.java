@@ -69,6 +69,23 @@ public class IngestionTargetService {
         return target;
     }
 
+    @Transactional
+    public IngestionTarget update(UUID id, Boolean enabled, Integer intervalMinutes) {
+        IngestionTarget target = require(id);
+        if (intervalMinutes != null) {
+            target.setIntervalMinutes(intervalMinutes, clock.instant());
+        }
+        if (enabled != null) {
+            target.setEnabled(enabled, clock.instant());
+        }
+        return target;
+    }
+
+    @Transactional(readOnly = true)
+    public IngestionTarget requireTarget(UUID id) {
+        return require(id);
+    }
+
     private IngestionTarget require(UUID id) {
         return repository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(

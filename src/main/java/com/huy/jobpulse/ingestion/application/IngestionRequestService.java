@@ -58,6 +58,30 @@ public class IngestionRequestService {
         return createOrGetOutstanding(target.getId(), clock.instant());
     }
 
+    @Transactional
+    public IngestionRequest requestTarget(UUID targetId) {
+        IngestionTarget target = targetRepository.findLockedById(targetId)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Ingestion target not found: " + targetId
+                ));
+        if (!target.isEnabled()) {
+            throw new IllegalArgumentException(
+                    "Enable this board before running it manually"
+            );
+        }
+        if (requestRepository
+                .findFirstByIngestionTargetIdAndStatusInOrderByCreatedAtAsc(
+                        targetId, OUTSTANDING
+                ).isPresent()) {
+            throw new IngestionAlreadyRunningException(
+                    "This board already has pending or running work"
+            );
+        }
+        return requestRepository.save(
+                IngestionRequest.create(targetId, clock.instant())
+        );
+    }
+
     @Transactional(readOnly = true)
     public IngestionRequest require(UUID id) {
         return requestRepository.findById(id)

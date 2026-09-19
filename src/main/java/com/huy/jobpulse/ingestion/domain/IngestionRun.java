@@ -146,6 +146,11 @@ public class IngestionRun {
         return completedAt;
     }
 
+    public Integer getDiscovered() { return discovered; }
+    public Integer getCreated() { return created; }
+    public Integer getUpdated() { return updated; }
+    public Integer getUnchanged() { return unchanged; }
+
     public Integer getClosed() {
         return closed;
     }

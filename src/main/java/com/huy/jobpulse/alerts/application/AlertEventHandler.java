@@ -14,6 +14,10 @@ import java.time.Clock;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
+import java.time.Duration;
+import com.huy.jobpulse.observability.PipelineMetrics;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.ObjectProvider;
 
 @Service
 public class AlertEventHandler {
@@ -31,15 +35,27 @@ public class AlertEventHandler {
     private final EventConsumptionStore consumptions;
     private final NamedParameterJdbcTemplate jdbc;
     private final Clock clock;
+    private final PipelineMetrics metrics;
 
+    @Autowired
     public AlertEventHandler(
             EventConsumptionStore consumptions,
             NamedParameterJdbcTemplate jdbc,
-            Clock clock
+            Clock clock,
+            ObjectProvider<PipelineMetrics> metrics
     ) {
         this.consumptions = consumptions;
         this.jdbc = jdbc;
         this.clock = clock;
+        this.metrics = metrics.getIfAvailable();
+    }
+
+    public AlertEventHandler(EventConsumptionStore consumptions,
+            NamedParameterJdbcTemplate jdbc, Clock clock) {
+        this.consumptions = consumptions;
+        this.jdbc = jdbc;
+        this.clock = clock;
+        this.metrics = null;
     }
 
     @Transactional
@@ -71,6 +87,10 @@ public class AlertEventHandler {
                                     Types.TIMESTAMP_WITH_TIMEZONE
                             )
             );
+        }
+        if (metrics != null) {
+            metrics.recordAlertLatency(Duration.between(
+                    event.occurredAt(), clock.instant()));
         }
     }
 

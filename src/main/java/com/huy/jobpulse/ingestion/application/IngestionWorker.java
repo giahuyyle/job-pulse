@@ -8,6 +8,10 @@ import org.springframework.amqp.AmqpRejectAndDontRequeueException;
 import org.springframework.amqp.ImmediateRequeueAmqpException;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.ObjectProvider;
+import com.huy.jobpulse.observability.PipelineMetrics;
+import io.micrometer.core.instrument.Timer;
 
 import java.util.Optional;
 
@@ -19,15 +23,27 @@ public class IngestionWorker {
     private final IngestionRequestService requestService;
     private final IngestionCoordinator ingestionCoordinator;
     private final ObjectMapper objectMapper;
+    private final PipelineMetrics metrics;
 
+    @Autowired
     public IngestionWorker(
             IngestionRequestService requestService,
             IngestionCoordinator ingestionCoordinator,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            ObjectProvider<PipelineMetrics> metrics
     ) {
         this.requestService = requestService;
         this.ingestionCoordinator = ingestionCoordinator;
         this.objectMapper = objectMapper;
+        this.metrics = metrics.getIfAvailable();
+    }
+
+    public IngestionWorker(IngestionRequestService requestService,
+            IngestionCoordinator ingestionCoordinator, ObjectMapper objectMapper) {
+        this.requestService = requestService;
+        this.ingestionCoordinator = ingestionCoordinator;
+        this.objectMapper = objectMapper;
+        this.metrics = null;
     }
 
     @RabbitListener(queues = IngestionAmqpTopology.QUEUE)
@@ -41,6 +57,7 @@ public class IngestionWorker {
         }
 
         IngestionWork work = claimed.orElseThrow();
+        Timer.Sample sample = metrics == null ? null : metrics.startIngestion();
         try {
             ingestionCoordinator.ingest(
                     work.source(),
@@ -48,7 +65,11 @@ public class IngestionWorker {
                     work.company()
             );
             requestService.succeed(work);
+            if (metrics != null) metrics.finishIngestion(
+                    sample, work.source().name(), true);
         } catch (RuntimeException exception) {
+            if (metrics != null) metrics.finishIngestion(
+                    sample, work.source().name(), false);
             if (requestService.fail(work, exception, MAX_ATTEMPTS)) {
                 throw new ImmediateRequeueAmqpException(
                         "Retrying ingestion request " + work.requestId(),
