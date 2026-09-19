@@ -9,6 +9,8 @@ import com.huy.jobpulse.ingestion.application.JobSourceClient;
 import com.huy.jobpulse.jobs.domain.JobSource;
 import com.huy.jobpulse.jobs.domain.RemotePolicy;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
@@ -26,8 +28,6 @@ import java.util.regex.Pattern;
 public class GreenhouseJobSourceClient
         implements JobSourceClient, BoardVerifier {
 
-    private static final String BASE_URL =
-            "https://boards-api.greenhouse.io/v1/boards";
     private static final Pattern BOARD_TOKEN =
             Pattern.compile("[A-Za-z0-9_-]{1,160}");
 
@@ -35,15 +35,31 @@ public class GreenhouseJobSourceClient
     private final ConcurrentMap<String, String> boardNames =
             new ConcurrentHashMap<>();
 
-    public GreenhouseJobSourceClient() {
+    @Autowired
+    public GreenhouseJobSourceClient(
+            @Value("${jobpulse.providers.greenhouse.base-url}") String baseUrl
+    ) {
         this(RestClient.builder()
-                .baseUrl(BASE_URL)
+                .baseUrl(normalizeBaseUrl(baseUrl) + "/v1/boards")
                 .requestFactory(requestFactory())
                 .build());
     }
 
     GreenhouseJobSourceClient(RestClient restClient) {
         this.restClient = restClient;
+    }
+
+    private static String normalizeBaseUrl(String baseUrl) {
+        if (baseUrl == null || baseUrl.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Greenhouse base URL must not be blank"
+            );
+        }
+        String normalized = baseUrl.strip();
+        while (normalized.endsWith("/")) {
+            normalized = normalized.substring(0, normalized.length() - 1);
+        }
+        return normalized;
     }
 
     @Override

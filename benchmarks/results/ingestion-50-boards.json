@@ -1,0 +1,26 @@
+{
+  "measuredAt": "2026-09-19T04:01:43.048804Z",
+  "database": "jobpulse_benchmark",
+  "boards": 50,
+  "postingsPerBoard": 1000,
+  "successfulRequests": 50,
+  "failedRequests": 0,
+  "postingsProcessed": 50000,
+  "postingsCreated": 50000,
+  "postingsUpdated": 0,
+  "postingsUnchanged": 0,
+  "postingsClosed": 0,
+  "elapsedSeconds": 77.827086,
+  "postingsPerSecond": 642.45,
+  "replay": {
+    "successfulRequests": 50,
+    "failedRequests": 0,
+    "postingsProcessed": 50000,
+    "postingsCreated": 0,
+    "postingsUpdated": 0,
+    "postingsUnchanged": 50000,
+    "postingsClosed": 0,
+    "finalPostingCount": 50000,
+    "duplicateGroups": 0
+  }
+}

@@ -1,0 +1,14 @@
+Limit  (cost=5584.97..5585.02 rows=20 width=86) (actual time=15.786..15.788 rows=20 loops=1)
+  Buffers: shared hit=4555
+  ->  Sort  (cost=5584.97..5609.79 rows=9927 width=86) (actual time=15.784..15.785 rows=20 loops=1)
+        Sort Key: (ts_rank(search_vector, '''backend'' & ''engin'''::tsquery)) DESC, first_seen_at DESC, id DESC
+        Sort Method: top-N heapsort  Memory: 29kB
+        Buffers: shared hit=4555
+        ->  Seq Scan on job_postings  (cost=0.00..5320.82 rows=9927 width=86) (actual time=0.043..13.869 rows=10000 loops=1)
+              Filter: ((search_vector @@ '''backend'' & ''engin'''::tsquery) AND ((status)::text = 'ACTIVE'::text))
+              Rows Removed by Filter: 40000
+              Buffers: shared hit=4546
+Planning:
+  Buffers: shared hit=259
+Planning Time: 1.408 ms
+Execution Time: 15.813 ms
