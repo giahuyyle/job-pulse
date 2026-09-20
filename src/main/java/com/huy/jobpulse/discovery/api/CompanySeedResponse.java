@@ -13,7 +13,9 @@ public record CompanySeedResponse(
         CompanySeedStatus status,
         Instant lastCheckedAt,
         String matchedUrl,
-        String lastError
+        String lastError,
+        String reviewedBy,
+        Instant reviewedAt
 ) {
 
     public static CompanySeedResponse from(CompanySeed seed) {
@@ -24,7 +26,9 @@ public record CompanySeedResponse(
                 seed.getStatus(),
                 seed.getLastCheckedAt(),
                 seed.getMatchedUrl(),
-                seed.getLastError()
+                seed.getLastError(),
+                seed.getReviewedBy(),
+                seed.getReviewedAt()
         );
     }
 }

@@ -10,7 +10,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface JobPostingRepository
-        extends JpaRepository<JobPosting, UUID> {
+        extends JpaRepository<JobPosting, UUID>,
+        org.springframework.data.jpa.repository.JpaSpecificationExecutor<JobPosting> {
 
     Optional<JobPosting>
     findBySourceAndSourceAccountAndSourceJobId(
@@ -29,4 +30,6 @@ public interface JobPostingRepository
             JobSource source,
             String sourceAccount
     );
+
+    long countByStatus(JobStatus status);
 }

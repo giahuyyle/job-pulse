@@ -4,8 +4,18 @@ export class ApiError extends Error {
   constructor(message:string, public status:number) { super(message) }
 }
 
+const baseUrl = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
+
+function resolveUrl(path:string) {
+  if (!baseUrl) return path
+  const normalized = baseUrl.endsWith('/api/v1') && path.startsWith('/api/v1/')
+    ? path.slice('/api/v1'.length)
+    : path
+  return `${baseUrl}${normalized}`
+}
+
 export async function api<T>(path:string, init?:RequestInit):Promise<T> {
-  const response = await fetch(path, {
+  const response = await fetch(resolveUrl(path), {
     ...init,
     headers: { ...(init?.body ? {'Content-Type':'application/json'} : {}), ...init?.headers },
   })

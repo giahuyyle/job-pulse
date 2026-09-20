@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import tools.jackson.databind.ObjectMapper;
 
 @Service
 public class JobIngestionWriter implements IngestionWriter {
@@ -26,17 +27,20 @@ public class JobIngestionWriter implements IngestionWriter {
     private final JobEventRepository eventRepository;
     private final IngestionRunRepository runRepository;
     private final Clock clock;
+    private final ObjectMapper objectMapper;
 
     public JobIngestionWriter(
             JobPostingRepository repository,
             JobEventRepository eventRepository,
             IngestionRunRepository runRepository,
-            Clock clock
+            Clock clock,
+            ObjectMapper objectMapper
     ) {
         this.repository = repository;
         this.eventRepository = eventRepository;
         this.runRepository = runRepository;
         this.clock = clock;
+        this.objectMapper = objectMapper;
     }
 
     @Transactional
@@ -81,6 +85,7 @@ public class JobIngestionWriter implements IngestionWriter {
                         externalJob.postedAt(),
                         observedAt
                 ));
+                createdPosting.recordIngestionContext(runId, rawPayload(externalJob));
                 eventRepository.save(JobEvent.capture(
                         createdPosting,
                         JobEventType.CREATED,
@@ -103,6 +108,7 @@ public class JobIngestionWriter implements IngestionWriter {
             );
 
             if (changed) {
+                existing.recordIngestionContext(runId, rawPayload(externalJob));
                 eventRepository.save(JobEvent.capture(
                         existing,
                         JobEventType.UPDATED,
@@ -126,6 +132,7 @@ public class JobIngestionWriter implements IngestionWriter {
         for (JobPosting posting : activePostings) {
             if (!seenSourceJobIds.contains(posting.getSourceJobId())
                     && posting.recordMissing(observedAt)) {
+                posting.recordIngestionContext(runId, posting.getRawPayload());
                 eventRepository.save(JobEvent.capture(
                         posting,
                         JobEventType.CLOSED,
@@ -151,6 +158,10 @@ public class JobIngestionWriter implements IngestionWriter {
                 observedAt
         );
         return result;
+    }
+
+    private String rawPayload(ExternalJob job) {
+        return objectMapper.writeValueAsString(job);
     }
 
 }

@@ -12,7 +12,8 @@ import org.springframework.data.domain.Pageable;
 import com.huy.jobpulse.ingestion.domain.IngestionRunStatus;
 
 public interface IngestionRunRepository
-        extends JpaRepository<IngestionRun, UUID> {
+        extends JpaRepository<IngestionRun, UUID>,
+        org.springframework.data.jpa.repository.JpaSpecificationExecutor<IngestionRun> {
 
     List<IngestionRun> findAllBySourceAndSourceAccountOrderByStartedAtAsc(
             JobSource source,
@@ -28,4 +29,19 @@ public interface IngestionRunRepository
     long countByStatusAndStartedAtGreaterThanEqual(
             IngestionRunStatus status, Instant since
     );
+
+    long countByStatus(IngestionRunStatus status);
+
+    IngestionRun findFirstByOrderByStartedAtDesc();
+
+    IngestionRun findFirstByStatusOrderByCompletedAtDesc(IngestionRunStatus status);
+
+    IngestionRun findFirstBySourceAndSourceAccountOrderByStartedAtDesc(
+            JobSource source, String sourceAccount);
+
+    @org.springframework.data.jpa.repository.Query("select coalesce(sum(r.unchanged), 0) from IngestionRun r")
+    long sumUnchanged();
+
+    Page<IngestionRun> findAllBySourceAndSourceAccountOrderByStartedAtDesc(
+            JobSource source, String sourceAccount, Pageable pageable);
 }

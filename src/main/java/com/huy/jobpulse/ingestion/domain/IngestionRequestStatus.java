@@ -4,5 +4,6 @@ public enum IngestionRequestStatus {
     PENDING,
     RUNNING,
     SUCCEEDED,
-    FAILED
+    FAILED,
+    CANCELLED
 }

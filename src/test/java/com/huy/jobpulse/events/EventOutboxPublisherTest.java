@@ -16,7 +16,6 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -61,9 +60,10 @@ class EventOutboxPublisherTest {
                 Clock.fixed(NOW, ZoneOffset.UTC)
         );
 
-        assertThatThrownBy(publisher::publishBatch)
-                .hasMessageContaining("Could not publish job event");
+        assertThat(publisher.publishBatch()).isOne();
         assertThat(event.getPublishedAt()).isNull();
+        assertThat(event.getPublishAttempts()).isOne();
+        assertThat(event.getLastPublishError()).contains("Kafka unavailable");
     }
 
     private static JobEventRepository repositoryReturning(JobEvent event) {

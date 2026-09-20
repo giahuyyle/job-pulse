@@ -46,6 +46,12 @@ public class IngestionRun {
     @Column(name = "failure_message", columnDefinition = "TEXT")
     private String failureMessage;
 
+    @Column(name = "retry_count", nullable = false)
+    private int retryCount;
+
+    @Column(name = "correlation_id", nullable = false)
+    private UUID correlationId;
+
     @Version
     private long version;
 
@@ -64,6 +70,7 @@ public class IngestionRun {
         this.sourceAccount = sourceAccount;
         this.status = IngestionRunStatus.RUNNING;
         this.startedAt = startedAt;
+        this.correlationId = id;
     }
 
     public static IngestionRun start(
@@ -158,4 +165,8 @@ public class IngestionRun {
     public String getFailureMessage() {
         return failureMessage;
     }
+
+    public int getRetryCount() { return retryCount; }
+
+    public UUID getCorrelationId() { return correlationId; }
 }

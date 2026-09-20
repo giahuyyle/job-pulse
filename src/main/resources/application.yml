@@ -42,6 +42,8 @@ spring:
       ack-mode: record
 
 jobpulse:
+  admin:
+    enabled: ${JOBPULSE_ADMIN_ENABLED:true}
   providers:
     greenhouse:
       base-url: ${GREENHOUSE_BASE_URL:https://boards-api.greenhouse.io}

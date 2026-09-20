@@ -84,6 +84,12 @@ public class JobPosting {
     @Column(name = "closed_at")
     private Instant closedAt;
 
+    @Column(name = "last_ingestion_run_id")
+    private UUID lastIngestionRunId;
+
+    @Column(name = "raw_payload", columnDefinition = "TEXT")
+    private String rawPayload;
+
     @Version
     private long version;
 
@@ -262,6 +268,22 @@ public class JobPosting {
 
     public Instant getClosedAt() {
         return closedAt;
+    }
+
+    public String getContentHash() { return contentHash; }
+    public UUID getLastIngestionRunId() { return lastIngestionRunId; }
+    public String getRawPayload() { return rawPayload; }
+
+    public void recordIngestionContext(UUID runId, String rawPayload) {
+        this.lastIngestionRunId = Objects.requireNonNull(runId);
+        this.rawPayload = rawPayload;
+    }
+
+    public boolean closeManually(Instant at) {
+        if (status == JobStatus.CLOSED) return false;
+        status = JobStatus.CLOSED;
+        closedAt = Objects.requireNonNull(at);
+        return true;
     }
 
     public boolean recordMissing(Instant observedAt) {

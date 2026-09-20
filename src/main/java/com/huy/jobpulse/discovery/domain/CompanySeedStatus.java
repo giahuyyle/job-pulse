@@ -5,5 +5,6 @@ public enum CompanySeedStatus {
     ADDED,
     ALREADY_EXISTS,
     NEEDS_REVIEW,
+    REJECTED,
     ERROR
 }

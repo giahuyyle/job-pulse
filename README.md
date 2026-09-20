@@ -21,6 +21,10 @@ cd frontend && npm install && npm run dev
 
 Open [http://localhost:5173/jobs](http://localhost:5173/jobs). Vite proxies `/api` and `/actuator` to Spring on port 8080. The operations console at `/admin` and every admin mutation are restricted by the backend to loopback clients; this local restriction is not a substitute for production authentication.
 
+Set `JOBPULSE_ADMIN_ENABLED=false` in every non-development environment. This removes the admin controllers in addition to the loopback request guard.
+
+The delivery sequence and the explicit administrative deployment gate are tracked in [docs/roadmap.md](docs/roadmap.md). The admin console must remain private until Milestone 13 adds authentication and RBAC.
+
 ## Demo path
 
 1. Open `/admin`, approve a discovered board or enable an existing one, and choose **Run now**.

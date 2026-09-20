@@ -15,7 +15,9 @@ public record IngestionRequestResponse(
         Instant startedAt,
         Instant finishedAt,
         int attemptCount,
-        String lastError
+        String lastError,
+        UUID correlationId,
+        UUID retryOfRunId
 ) {
     public static IngestionRequestResponse from(IngestionRequest request) {
         return new IngestionRequestResponse(
@@ -27,7 +29,9 @@ public record IngestionRequestResponse(
                 request.getStartedAt(),
                 request.getFinishedAt(),
                 request.getAttemptCount(),
-                request.getLastError()
+                request.getLastError(),
+                request.getCorrelationId(),
+                request.getRetryOfRunId()
         );
     }
 }

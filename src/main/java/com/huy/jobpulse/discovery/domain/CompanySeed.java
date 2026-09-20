@@ -40,6 +40,12 @@ public class CompanySeed {
     @Column(name = "last_error", columnDefinition = "TEXT")
     private String lastError;
 
+    @Column(name = "reviewed_by", length = 160)
+    private String reviewedBy;
+
+    @Column(name = "reviewed_at")
+    private Instant reviewedAt;
+
     @Version
     private long version;
 
@@ -130,4 +136,18 @@ public class CompanySeed {
     public String getLastError() {
         return lastError;
     }
+
+    public void review(CompanySeedStatus outcome, String actor, Instant at, String detail) {
+        if (outcome != CompanySeedStatus.ADDED && outcome != CompanySeedStatus.REJECTED) {
+            throw new IllegalArgumentException("Review outcome must be ADDED or REJECTED");
+        }
+        this.status = outcome;
+        this.reviewedBy = requireText(actor, "actor");
+        this.reviewedAt = Objects.requireNonNull(at);
+        this.lastCheckedAt = at;
+        this.lastError = normalizeOptional(detail);
+    }
+
+    public String getReviewedBy() { return reviewedBy; }
+    public Instant getReviewedAt() { return reviewedAt; }
 }

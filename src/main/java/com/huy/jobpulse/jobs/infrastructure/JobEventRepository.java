@@ -9,7 +9,8 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
-public interface JobEventRepository extends JpaRepository<JobEvent, UUID> {
+public interface JobEventRepository extends JpaRepository<JobEvent, UUID>,
+        org.springframework.data.jpa.repository.JpaSpecificationExecutor<JobEvent> {
 
     @Query(value = """
             SELECT *
@@ -28,4 +29,8 @@ public interface JobEventRepository extends JpaRepository<JobEvent, UUID> {
     Instant findOldestUnpublishedAt();
 
     long countByEventType(JobEventType eventType);
+
+    long countByPublishedAtIsNullAndLastPublishErrorIsNotNull();
+
+    List<JobEvent> findAllByJobPostingIdOrderByCreatedAtDesc(UUID jobPostingId);
 }

@@ -47,6 +47,12 @@ public class IngestionRequest {
     @Column(name = "lease_until")
     private Instant leaseUntil;
 
+    @Column(name = "correlation_id", nullable = false)
+    private UUID correlationId;
+
+    @Column(name = "retry_of_run_id")
+    private UUID retryOfRunId;
+
     @Version
     private long version;
 
@@ -59,6 +65,7 @@ public class IngestionRequest {
         this.ingestionTargetId = ingestionTargetId;
         this.status = IngestionRequestStatus.PENDING;
         this.createdAt = createdAt;
+        this.correlationId = id;
     }
 
     public static IngestionRequest create(UUID targetId, Instant now) {
@@ -67,6 +74,12 @@ public class IngestionRequest {
                 Objects.requireNonNull(targetId),
                 Objects.requireNonNull(now)
         );
+    }
+
+    public static IngestionRequest retry(UUID targetId, UUID failedRunId, Instant now) {
+        IngestionRequest request = create(targetId, now);
+        request.retryOfRunId = Objects.requireNonNull(failedRunId);
+        return request;
     }
 
     public UUID getId() {
@@ -108,4 +121,10 @@ public class IngestionRequest {
     public Instant getLeaseUntil() {
         return leaseUntil;
     }
+
+    public UUID getCorrelationId() {
+        return correlationId;
+    }
+
+    public UUID getRetryOfRunId() { return retryOfRunId; }
 }

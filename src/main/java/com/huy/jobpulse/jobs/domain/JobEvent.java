@@ -54,6 +54,18 @@ public class JobEvent {
     @Column(name = "published_at")
     private Instant publishedAt;
 
+    @Column(name = "publish_attempts", nullable = false)
+    private int publishAttempts;
+
+    @Column(name = "last_publish_error", columnDefinition = "TEXT")
+    private String lastPublishError;
+
+    @Column(name = "last_publish_attempt_at")
+    private Instant lastPublishAttemptAt;
+
+    @Column(name = "retry_requested_at")
+    private Instant retryRequestedAt;
+
     protected JobEvent() {
         // Required by JPA
     }
@@ -138,8 +150,32 @@ public class JobEvent {
     }
 
     public void markPublished(Instant publishedAt) {
+        publishAttempts++;
+        lastPublishAttemptAt = Objects.requireNonNull(publishedAt);
+        lastPublishError = null;
+        retryRequestedAt = null;
         if (this.publishedAt == null) {
-            this.publishedAt = Objects.requireNonNull(publishedAt);
+            this.publishedAt = publishedAt;
         }
+    }
+
+    public void markPublishFailed(Instant attemptedAt, String error) {
+        publishAttempts++;
+        lastPublishAttemptAt = Objects.requireNonNull(attemptedAt);
+        lastPublishError = error == null || error.isBlank()
+                ? "Kafka publication failed" : error;
+    }
+
+    public int getPublishAttempts() { return publishAttempts; }
+    public String getLastPublishError() { return lastPublishError; }
+    public Instant getLastPublishAttemptAt() { return lastPublishAttemptAt; }
+    public Instant getRetryRequestedAt() { return retryRequestedAt; }
+
+    public void requestPublishRetry(Instant requestedAt) {
+        if (publishedAt != null) {
+            throw new IllegalArgumentException("Published events cannot be retried");
+        }
+        retryRequestedAt = Objects.requireNonNull(requestedAt);
+        lastPublishError = null;
     }
 }

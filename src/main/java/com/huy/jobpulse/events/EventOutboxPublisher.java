@@ -64,12 +64,13 @@ public class EventOutboxPublisher {
             event.markPublished(clock.instant());
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
-            throw new IllegalStateException("Kafka publication interrupted", exception);
+            event.markPublishFailed(clock.instant(), "Kafka publication interrupted");
+            LOGGER.error("Kafka publication interrupted for {}", event.getId(), exception);
         } catch (Exception exception) {
-            throw new IllegalStateException(
-                    "Could not publish job event " + event.getId(),
-                    exception
-            );
+            String detail = exception.getCause() == null
+                    ? exception.getMessage() : exception.getCause().getMessage();
+            event.markPublishFailed(clock.instant(), detail);
+            LOGGER.error("Could not publish job event {}", event.getId(), exception);
         }
     }
 

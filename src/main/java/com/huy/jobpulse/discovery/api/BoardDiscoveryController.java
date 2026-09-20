@@ -16,6 +16,8 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/admin/discovery")
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(
+        prefix = "jobpulse.admin", name = "enabled", havingValue = "true")
 public class BoardDiscoveryController {
 
     private final CompanySeedService seedService;

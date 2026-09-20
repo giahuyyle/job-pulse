@@ -5,6 +5,8 @@ import com.huy.jobpulse.ingestion.domain.IngestionRequestStatus;
 import com.huy.jobpulse.ingestion.domain.IngestionTarget;
 import com.huy.jobpulse.ingestion.infrastructure.IngestionRequestRepository;
 import com.huy.jobpulse.ingestion.infrastructure.IngestionTargetRepository;
+import com.huy.jobpulse.ingestion.infrastructure.IngestionDeadLetterRepository;
+import com.huy.jobpulse.ingestion.domain.IngestionDeadLetter;
 import com.huy.jobpulse.jobs.domain.JobSource;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
@@ -16,6 +18,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -30,15 +33,18 @@ public class IngestionRequestService {
     private final IngestionRequestRepository requestRepository;
     private final IngestionTargetRepository targetRepository;
     private final Clock clock;
+    private final IngestionDeadLetterRepository deadLetters;
 
     public IngestionRequestService(
             IngestionRequestRepository requestRepository,
             IngestionTargetRepository targetRepository,
-            Clock clock
+            Clock clock,
+            IngestionDeadLetterRepository deadLetters
     ) {
         this.requestRepository = requestRepository;
         this.targetRepository = targetRepository;
         this.clock = clock;
+        this.deadLetters = deadLetters;
     }
 
     @Transactional
@@ -60,6 +66,15 @@ public class IngestionRequestService {
 
     @Transactional
     public IngestionRequest requestTarget(UUID targetId) {
+        return requestTarget(targetId, null);
+    }
+
+    @Transactional
+    public IngestionRequest retryTarget(UUID targetId, UUID failedRunId) {
+        return requestTarget(targetId, Objects.requireNonNull(failedRunId));
+    }
+
+    private IngestionRequest requestTarget(UUID targetId, UUID failedRunId) {
         IngestionTarget target = targetRepository.findLockedById(targetId)
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Ingestion target not found: " + targetId
@@ -77,9 +92,9 @@ public class IngestionRequestService {
                     "This board already has pending or running work"
             );
         }
-        return requestRepository.save(
-                IngestionRequest.create(targetId, clock.instant())
-        );
+        return requestRepository.save(failedRunId == null
+                ? IngestionRequest.create(targetId, clock.instant())
+                : IngestionRequest.retry(targetId, failedRunId, clock.instant()));
     }
 
     @Transactional(readOnly = true)
@@ -177,8 +192,35 @@ public class IngestionRequestService {
                 message
         ) == 1 && target.isPresent()) {
             target.orElseThrow().markFailed(now, message);
+            deadLetters.save(IngestionDeadLetter.create(
+                    work.requestId(), work.targetId(), now, message));
         }
         return false;
+    }
+
+    @Transactional
+    public IngestionRequest cancel(UUID id) {
+        if (requestRepository.cancel(id, clock.instant()) != 1) {
+            throw new IllegalArgumentException("Only a pending request can be cancelled");
+        }
+        return require(id);
+    }
+
+    @Transactional
+    public IngestionRequest replayDeadLetter(UUID id) {
+        IngestionDeadLetter dead = deadLetters.findById(id).orElseThrow(() ->
+                new EntityNotFoundException("Dead letter not found: " + id));
+        if (dead.getReplayedAt() != null) {
+            throw new IllegalArgumentException("Dead letter has already been replayed");
+        }
+        IngestionRequest replay = requestTarget(dead.getTargetId());
+        dead.replayed(clock.instant(), replay.getId());
+        return replay;
+    }
+
+    @Transactional(readOnly = true)
+    public long countRetriesOfRun(UUID runId) {
+        return requestRepository.countByRetryOfRunId(runId);
     }
 
     @Transactional

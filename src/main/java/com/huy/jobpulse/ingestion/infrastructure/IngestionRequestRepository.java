@@ -25,6 +25,8 @@ public interface IngestionRequestRepository
 
     long countByStatus(IngestionRequestStatus status);
 
+    long countByRetryOfRunId(UUID retryOfRunId);
+
     Page<IngestionRequest> findAllByOrderByCreatedAtDesc(Pageable pageable);
 
     List<IngestionRequest>
@@ -135,4 +137,13 @@ public interface IngestionRequestRepository
             @Param("now") Instant now,
             @Param("lastError") String lastError
     );
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = """
+            UPDATE ingestion_requests
+               SET status = 'CANCELLED', finished_at = :finishedAt,
+                   last_error = 'Cancelled by administrator', version = version + 1
+             WHERE id = :id AND status = 'PENDING'
+            """, nativeQuery = true)
+    int cancel(@Param("id") UUID id, @Param("finishedAt") Instant finishedAt);
 }
