@@ -15,7 +15,7 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 import java.time.Duration;
-import com.huy.jobpulse.observability.PipelineMetrics;
+import com.huy.jobpulse.observability.JobPulseMetrics;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.ObjectProvider;
 
@@ -35,14 +35,14 @@ public class AlertEventHandler {
     private final EventConsumptionStore consumptions;
     private final NamedParameterJdbcTemplate jdbc;
     private final Clock clock;
-    private final PipelineMetrics metrics;
+    private final JobPulseMetrics metrics;
 
     @Autowired
     public AlertEventHandler(
             EventConsumptionStore consumptions,
             NamedParameterJdbcTemplate jdbc,
             Clock clock,
-            ObjectProvider<PipelineMetrics> metrics
+            ObjectProvider<JobPulseMetrics> metrics
     ) {
         this.consumptions = consumptions;
         this.jdbc = jdbc;

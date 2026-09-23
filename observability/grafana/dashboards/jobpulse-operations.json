@@ -1,0 +1,110 @@
+{
+  "annotations": {"list": []},
+  "editable": false,
+  "graphTooltip": 1,
+  "panels": [
+    {
+      "id": 1,
+      "title": "Application availability",
+      "type": "stat",
+      "gridPos": {"h": 6, "w": 6, "x": 0, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "up{job=\"jobpulse\"}"}],
+      "fieldConfig": {"defaults": {"mappings": [{"type": "value", "options": {"0": {"text": "DOWN"}, "1": {"text": "UP"}}}], "thresholds": {"mode": "absolute", "steps": [{"color": "red"}, {"color": "green", "value": 1}]}}, "overrides": []},
+      "options": {"colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"}
+    },
+    {
+      "id": 2,
+      "title": "Search request rate",
+      "type": "timeseries",
+      "gridPos": {"h": 6, "w": 9, "x": 6, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "sum(rate(jobpulse_search_duration_seconds_count[5m]))", "legendFormat": "requests/s"}],
+      "fieldConfig": {"defaults": {"unit": "reqps"}, "overrides": []}
+    },
+    {
+      "id": 3,
+      "title": "Search p95 latency",
+      "description": "Verified 100-RPS baseline: approximately 0.024 seconds.",
+      "type": "timeseries",
+      "gridPos": {"h": 6, "w": 9, "x": 15, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "histogram_quantile(0.95, sum by (le) (rate(jobpulse_search_duration_seconds_bucket[5m])))", "legendFormat": "p95"}],
+      "fieldConfig": {"defaults": {"unit": "s", "thresholds": {"mode": "absolute", "steps": [{"color": "green"}, {"color": "red", "value": 0.1}]}}, "overrides": []}
+    },
+    {
+      "id": 4,
+      "title": "Ingestion throughput",
+      "type": "timeseries",
+      "gridPos": {"h": 7, "w": 8, "x": 0, "y": 6},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "sum(rate(jobpulse_ingestion_postings_total[5m]))", "legendFormat": "postings/s"}],
+      "fieldConfig": {"defaults": {"unit": "ops"}, "overrides": []}
+    },
+    {
+      "id": 5,
+      "title": "Ingestion runs by outcome",
+      "type": "barchart",
+      "gridPos": {"h": 7, "w": 8, "x": 8, "y": 6},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "sum by (outcome) (increase(jobpulse_ingestion_runs_total[1h]))", "legendFormat": "{{outcome}}", "instant": true}],
+      "options": {"orientation": "horizontal", "showValue": "always", "stacking": "normal"}
+    },
+    {
+      "id": 6,
+      "title": "Postings by ingestion result",
+      "type": "barchart",
+      "gridPos": {"h": 7, "w": 8, "x": 16, "y": 6},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "sum by (outcome) (increase(jobpulse_ingestion_postings_total[1h]))", "legendFormat": "{{outcome}}", "instant": true}],
+      "options": {"orientation": "horizontal", "showValue": "always", "stacking": "normal"}
+    },
+    {
+      "id": 7,
+      "title": "Unpublished outbox events",
+      "type": "stat",
+      "gridPos": {"h": 6, "w": 6, "x": 0, "y": 13},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "jobpulse_outbox_unpublished"}],
+      "fieldConfig": {"defaults": {"thresholds": {"mode": "absolute", "steps": [{"color": "green"}, {"color": "orange", "value": 1}, {"color": "red", "value": 100}]}}, "overrides": []}
+    },
+    {
+      "id": 8,
+      "title": "Dead-lettered messages",
+      "type": "timeseries",
+      "gridPos": {"h": 6, "w": 6, "x": 6, "y": 13},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "sum by (queue) (increase(jobpulse_messages_dead_lettered_total[1h]))", "legendFormat": "{{queue}}"}]
+    },
+    {
+      "id": 9,
+      "title": "JVM memory",
+      "type": "timeseries",
+      "gridPos": {"h": 6, "w": 6, "x": 12, "y": 13},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "sum by (area) (jvm_memory_used_bytes)", "legendFormat": "{{area}}"}],
+      "fieldConfig": {"defaults": {"unit": "bytes"}, "overrides": []}
+    },
+    {
+      "id": 10,
+      "title": "Database connection utilization",
+      "type": "timeseries",
+      "gridPos": {"h": 6, "w": 6, "x": 18, "y": 13},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"refId": "A", "expr": "hikaricp_connections_active", "legendFormat": "active"},
+        {"refId": "B", "expr": "hikaricp_connections_idle", "legendFormat": "idle"},
+        {"refId": "C", "expr": "hikaricp_connections_max", "legendFormat": "max"}
+      ]
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 41,
+  "tags": ["jobpulse", "operations"],
+  "templating": {"list": []},
+  "time": {"from": "now-6h", "to": "now"},
+  "timezone": "browser",
+  "title": "JobPulse Operations",
+  "uid": "jobpulse-operations",
+  "version": 1
+}

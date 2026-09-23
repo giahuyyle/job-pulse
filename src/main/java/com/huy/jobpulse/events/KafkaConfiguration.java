@@ -59,7 +59,9 @@ public class KafkaConfiguration {
     KafkaTemplate<String, String> kafkaTemplate(
             ProducerFactory<String, String> producerFactory
     ) {
-        return new KafkaTemplate<>(producerFactory);
+        KafkaTemplate<String, String> template = new KafkaTemplate<>(producerFactory);
+        template.setObservationEnabled(true);
+        return template;
     }
 
     @Bean
@@ -126,6 +128,7 @@ public class KafkaConfiguration {
         factory.getContainerProperties().setAckMode(
                 ContainerProperties.AckMode.RECORD
         );
+        factory.getContainerProperties().setObservationEnabled(true);
         factory.setAutoStartup(autoStartup);
         return factory;
     }

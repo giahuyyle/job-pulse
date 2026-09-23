@@ -1,0 +1,55 @@
+groups:
+  - name: jobpulse
+    rules:
+      - alert: JobPulseDown
+        expr: up{job="jobpulse"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: JobPulse is unavailable
+          description: Prometheus has been unable to scrape JobPulse for one minute.
+
+      - alert: JobPulseSearchLatencyHigh
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (le) (
+              rate(jobpulse_search_duration_seconds_bucket[5m])
+            )
+          ) > 0.100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Search p95 latency exceeds 100 ms
+
+      - alert: JobPulseIngestionFailure
+        expr: |
+          sum(
+            increase(
+              jobpulse_ingestion_runs_total{outcome="failed"}[10m]
+            )
+          ) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: A board ingestion run failed
+
+      - alert: JobPulseOutboxBacklog
+        expr: jobpulse_outbox_unpublished > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Transactional outbox is accumulating unpublished events
+
+      - alert: JobPulseDeadLettersPresent
+        expr: |
+          sum(
+            increase(jobpulse_messages_dead_lettered_total[10m])
+          ) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: Messages have entered a dead-letter queue

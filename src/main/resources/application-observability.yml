@@ -1,0 +1,6 @@
+logging:
+  structured:
+    format:
+      console: ecs
+  level:
+    com.huy.jobpulse: INFO

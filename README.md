@@ -25,6 +25,8 @@ Set `JOBPULSE_ADMIN_ENABLED=false` in every non-development environment. This re
 
 The delivery sequence and the explicit administrative deployment gate are tracked in [docs/roadmap.md](docs/roadmap.md). The admin console must remain private until Milestone 13 adds authentication and RBAC.
 
+Operational metrics, alerts, dashboards, structured logging, tracing, and controlled failure drills are documented in [docs/observability.md](docs/observability.md).
+
 ## Demo path
 
 1. Open `/admin`, approve a discovered board or enable an existing one, and choose **Run now**.

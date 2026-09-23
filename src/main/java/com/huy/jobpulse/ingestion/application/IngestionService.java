@@ -2,6 +2,8 @@ package com.huy.jobpulse.ingestion.application;
 
 import com.huy.jobpulse.jobs.domain.JobSource;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashSet;
 import java.util.List;
@@ -11,6 +13,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class IngestionService implements IngestionCoordinator {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(IngestionService.class);
 
     private final JobSourceRegistry sourceRegistry;
     private final IngestionWriter writer;
@@ -73,16 +77,28 @@ public class IngestionService implements IngestionCoordinator {
                     )
             );
             validateCompleteSnapshot(jobs);
-            return writer.apply(
+            IngestionResult result = writer.apply(
                     runId,
                     source,
                     normalizedSourceAccount,
                     jobs
             );
+            LOGGER.atInfo()
+                    .addKeyValue("runId", runId)
+                    .addKeyValue("created", result.created())
+                    .addKeyValue("updated", result.updated())
+                    .addKeyValue("unchanged", result.unchanged())
+                    .addKeyValue("closed", result.closed())
+                    .log("Ingestion run completed");
+            return result;
         } catch (RuntimeException exception) {
             if (runId != null) {
                 runRecorder.failIfRunning(runId, exception.getMessage());
             }
+            LOGGER.atError()
+                    .addKeyValue("runId", runId)
+                    .setCause(exception)
+                    .log("Ingestion run failed");
             throw exception;
         } finally {
             activeIngestions.remove(key);

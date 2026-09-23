@@ -16,7 +16,7 @@ Status: implemented locally.
 
 ## Remaining order
 
-11. Metrics, logs, Prometheus, and Grafana
+11. Metrics, logs, Prometheus, Grafana, and Tempo — implemented locally
 12. Resilience and failure recovery
 13. Authentication, RBAC, and API security
 14. CI/CD and AWS deployment

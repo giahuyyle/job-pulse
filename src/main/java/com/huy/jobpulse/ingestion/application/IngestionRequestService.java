@@ -8,10 +8,13 @@ import com.huy.jobpulse.ingestion.infrastructure.IngestionTargetRepository;
 import com.huy.jobpulse.ingestion.infrastructure.IngestionDeadLetterRepository;
 import com.huy.jobpulse.ingestion.domain.IngestionDeadLetter;
 import com.huy.jobpulse.jobs.domain.JobSource;
+import com.huy.jobpulse.observability.JobPulseMetrics;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -24,6 +27,8 @@ import java.util.UUID;
 @Service
 public class IngestionRequestService {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(IngestionRequestService.class);
+
     private static final List<IngestionRequestStatus> OUTSTANDING = List.of(
             IngestionRequestStatus.PENDING,
             IngestionRequestStatus.RUNNING
@@ -34,17 +39,20 @@ public class IngestionRequestService {
     private final IngestionTargetRepository targetRepository;
     private final Clock clock;
     private final IngestionDeadLetterRepository deadLetters;
+    private final JobPulseMetrics metrics;
 
     public IngestionRequestService(
             IngestionRequestRepository requestRepository,
             IngestionTargetRepository targetRepository,
             Clock clock,
-            IngestionDeadLetterRepository deadLetters
+            IngestionDeadLetterRepository deadLetters,
+            JobPulseMetrics metrics
     ) {
         this.requestRepository = requestRepository;
         this.targetRepository = targetRepository;
         this.clock = clock;
         this.deadLetters = deadLetters;
+        this.metrics = metrics;
     }
 
     @Transactional
@@ -194,6 +202,13 @@ public class IngestionRequestService {
             target.orElseThrow().markFailed(now, message);
             deadLetters.save(IngestionDeadLetter.create(
                     work.requestId(), work.targetId(), now, message));
+            metrics.recordDeadLetter("ingestion");
+            LOGGER.atError()
+                    .addKeyValue("requestId", work.requestId())
+                    .addKeyValue("boardId", work.targetId())
+                    .addKeyValue("provider", work.source().name().toLowerCase())
+                    .addKeyValue("attempt", work.attemptCount())
+                    .log("Ingestion message moved to the dead-letter queue");
         }
         return false;
     }
@@ -245,6 +260,10 @@ public class IngestionRequestService {
                             now,
                             "Worker lease expired after maximum attempts"
                     );
+                    deadLetters.save(IngestionDeadLetter.create(
+                            request.getId(), request.getIngestionTargetId(), now,
+                            "Worker lease expired after maximum attempts"));
+                    metrics.recordDeadLetter("ingestion");
                 }
             } else {
                 recovered += requestRepository.recoverExpired(

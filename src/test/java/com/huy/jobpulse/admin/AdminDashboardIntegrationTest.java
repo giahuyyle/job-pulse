@@ -46,7 +46,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @Testcontainers
 class AdminDashboardIntegrationTest {
-    private static final Instant NOW = Instant.parse("2026-09-20T08:00:00Z");
+    private static final Instant NOW = Instant.now().minusSeconds(60);
 
     @Container @ServiceConnection
     static PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:16");
@@ -91,7 +91,8 @@ class AdminDashboardIntegrationTest {
                 .andExpect(jsonPath("$.totalPostings").value(2))
                 .andExpect(jsonPath("$.openPostings").value(1))
                 .andExpect(jsonPath("$.failedRunsLast24Hours").value(1))
-                .andExpect(jsonPath("$.lastSuccessfulRunAt").value("2026-09-20T08:00:30Z"));
+                .andExpect(jsonPath("$.lastSuccessfulRunAt")
+                        .value(NOW.plusSeconds(30).toString()));
     }
 
     @Test

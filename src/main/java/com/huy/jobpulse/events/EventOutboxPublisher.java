@@ -8,6 +8,9 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
+import com.huy.jobpulse.observability.JobPulseMetrics;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -27,17 +30,32 @@ public class EventOutboxPublisher {
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final JobEventCodec codec;
     private final Clock clock;
+    private final JobPulseMetrics metrics;
 
+    @Autowired
     public EventOutboxPublisher(
             JobEventRepository repository,
             KafkaTemplate<String, String> kafkaTemplate,
             JobEventCodec codec,
-            Clock clock
+            Clock clock,
+            ObjectProvider<JobPulseMetrics> metrics
     ) {
         this.repository = repository;
         this.kafkaTemplate = kafkaTemplate;
         this.codec = codec;
         this.clock = clock;
+        this.metrics = metrics.getIfAvailable();
+    }
+
+    public EventOutboxPublisher(JobEventRepository repository,
+            KafkaTemplate<String, String> kafkaTemplate,
+            JobEventCodec codec,
+            Clock clock) {
+        this.repository = repository;
+        this.kafkaTemplate = kafkaTemplate;
+        this.codec = codec;
+        this.clock = clock;
+        this.metrics = null;
     }
 
     @Scheduled(
@@ -62,15 +80,33 @@ public class EventOutboxPublisher {
                     codec.encode(JobEventEnvelope.from(event))
             ).get(10, TimeUnit.SECONDS);
             event.markPublished(clock.instant());
+            if (metrics != null) metrics.recordOutboxPublication("success");
+            LOGGER.atInfo()
+                    .addKeyValue("eventId", event.getId())
+                    .addKeyValue("jobId", event.getJobPostingId())
+                    .addKeyValue("eventType", event.getEventType().name().toLowerCase())
+                    .log("Outbox event published to Kafka");
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
             event.markPublishFailed(clock.instant(), "Kafka publication interrupted");
-            LOGGER.error("Kafka publication interrupted for {}", event.getId(), exception);
+            if (metrics != null) metrics.recordOutboxPublication("failed");
+            LOGGER.atError()
+                    .addKeyValue("eventId", event.getId())
+                    .addKeyValue("jobId", event.getJobPostingId())
+                    .addKeyValue("eventType", event.getEventType().name().toLowerCase())
+                    .setCause(exception)
+                    .log("Kafka publication interrupted");
         } catch (Exception exception) {
             String detail = exception.getCause() == null
                     ? exception.getMessage() : exception.getCause().getMessage();
             event.markPublishFailed(clock.instant(), detail);
-            LOGGER.error("Could not publish job event {}", event.getId(), exception);
+            if (metrics != null) metrics.recordOutboxPublication("failed");
+            LOGGER.atError()
+                    .addKeyValue("eventId", event.getId())
+                    .addKeyValue("jobId", event.getJobPostingId())
+                    .addKeyValue("eventType", event.getEventType().name().toLowerCase())
+                    .setCause(exception)
+                    .log("Could not publish outbox event to Kafka");
         }
     }
 
