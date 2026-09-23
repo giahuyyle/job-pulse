@@ -66,6 +66,15 @@ public class JobEvent {
     @Column(name = "retry_requested_at")
     private Instant retryRequestedAt;
 
+    @Column(name = "trace_parent", length = 128)
+    private String traceParent;
+
+    @Column(name = "trace_state", length = 1024)
+    private String traceState;
+
+    @Column(name = "trace_baggage", columnDefinition = "TEXT")
+    private String traceBaggage;
+
     protected JobEvent() {
         // Required by JPA
     }
@@ -170,6 +179,16 @@ public class JobEvent {
     public String getLastPublishError() { return lastPublishError; }
     public Instant getLastPublishAttemptAt() { return lastPublishAttemptAt; }
     public Instant getRetryRequestedAt() { return retryRequestedAt; }
+    public String getTraceParent() { return traceParent; }
+    public String getTraceState() { return traceState; }
+    public String getTraceBaggage() { return traceBaggage; }
+
+    public void recordTraceContext(String traceParent, String traceState,
+            String traceBaggage) {
+        this.traceParent = traceParent;
+        this.traceState = traceState;
+        this.traceBaggage = traceBaggage;
+    }
 
     public void requestPublishRetry(Instant requestedAt) {
         if (publishedAt != null) {

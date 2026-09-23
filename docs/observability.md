@@ -53,5 +53,5 @@ Verified on 2026-09-23 UTC with the Compose `app` profile:
 - Prometheus reported `up{job="jobpulse"} = 1` and loaded all five JobPulse alert rules.
 - Grafana provisioned the Prometheus and Tempo data sources and the **JobPulse Operations** dashboard.
 - A Greenhouse ingestion request completed successfully with request/correlation ID `67378603-d841-44ff-a97f-d4d8a1b14287` and run ID `6fd37001-0224-4d4d-8eee-31b063e564ad`. Its ECS log included the board, provider, trace, run, request, and outcome counts.
-- Tempo trace `f7fa6f6b770756ecac618762d12a3597` contained the dispatcher, RabbitMQ publish, and RabbitMQ receive spans. A separate outbox trace contained Kafka publish and consumer spans across both consumers.
+- Tempo trace `80552d67c0222c0f1273df13f2ef167b` followed one Ashby request across the initiating HTTP call, persisted dispatcher continuation, RabbitMQ publish and receive, transactional outbox, 43 Kafka publications, and both Kafka consumers. The request/correlation ID was `69609ea6-fb2d-4480-afa5-aeb9a49c412b` and the ingestion run ID was `2232d171-5cbe-409e-9442-8fcd28cb5421`.
 - Stopping JobPulse changed the scrape target to `0`, moved `JobPulseDown` from pending to firing after one minute, and recreating the app from the final image returned the target to `1` and cleared the alert.

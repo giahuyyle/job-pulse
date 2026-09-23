@@ -1,7 +1,10 @@
 package com.huy.jobpulse.ingestion.application;
 
+import com.huy.jobpulse.observability.TraceContextBridge;
+import com.huy.jobpulse.observability.TraceContextSnapshot;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -13,13 +16,24 @@ public class IngestionDispatcher {
     );
     private final IngestionRequestService requestService;
     private final IngestionPublisher publisher;
+    private final TraceContextBridge traceContexts;
 
+    @Autowired
     public IngestionDispatcher(
             IngestionRequestService requestService,
-            IngestionPublisher publisher
+            IngestionPublisher publisher,
+            TraceContextBridge traceContexts
     ) {
         this.requestService = requestService;
         this.publisher = publisher;
+        this.traceContexts = traceContexts;
+    }
+
+    public IngestionDispatcher(IngestionRequestService requestService,
+            IngestionPublisher publisher) {
+        this.requestService = requestService;
+        this.publisher = publisher;
+        this.traceContexts = null;
     }
 
     @Scheduled(
@@ -28,7 +42,12 @@ public class IngestionDispatcher {
     )
     public void dispatchUnpublished() {
         for (var requestId : requestService.findUnpublishedIds()) {
-            try {
+            TraceContextSnapshot snapshot = traceContexts == null
+                    ? TraceContextSnapshot.EMPTY
+                    : snapshot(requestId);
+            try (var trace = traceContexts == null ? null
+                    : traceContexts.continueTrace(snapshot,
+                            "jobpulse.ingestion.dispatch")) {
                 publisher.publish(requestId);
                 requestService.markPublished(requestId);
             } catch (RuntimeException exception) {
@@ -40,6 +59,15 @@ public class IngestionDispatcher {
                 return;
             }
         }
+    }
+
+    private TraceContextSnapshot snapshot(java.util.UUID requestId) {
+        var request = requestService.require(requestId);
+        return new TraceContextSnapshot(
+                request.getTraceParent(),
+                request.getTraceState(),
+                request.getTraceBaggage()
+        );
     }
 
 }

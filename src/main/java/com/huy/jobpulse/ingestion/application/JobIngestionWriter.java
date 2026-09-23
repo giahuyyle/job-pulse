@@ -9,6 +9,8 @@ import com.huy.jobpulse.ingestion.domain.IngestionRun;
 import com.huy.jobpulse.ingestion.infrastructure.IngestionRunRepository;
 import com.huy.jobpulse.jobs.infrastructure.JobPostingRepository;
 import com.huy.jobpulse.jobs.infrastructure.JobEventRepository;
+import com.huy.jobpulse.observability.TraceContextBridge;
+import com.huy.jobpulse.observability.TraceContextSnapshot;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,19 +30,22 @@ public class JobIngestionWriter implements IngestionWriter {
     private final IngestionRunRepository runRepository;
     private final Clock clock;
     private final ObjectMapper objectMapper;
+    private final TraceContextBridge traceContexts;
 
     public JobIngestionWriter(
             JobPostingRepository repository,
             JobEventRepository eventRepository,
             IngestionRunRepository runRepository,
             Clock clock,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            TraceContextBridge traceContexts
     ) {
         this.repository = repository;
         this.eventRepository = eventRepository;
         this.runRepository = runRepository;
         this.clock = clock;
         this.objectMapper = objectMapper;
+        this.traceContexts = traceContexts;
     }
 
     @Transactional
@@ -60,6 +65,7 @@ public class JobIngestionWriter implements IngestionWriter {
         int updated = 0;
         int unchanged = 0;
         int closed = 0;
+        TraceContextSnapshot trace = traceContexts.capture();
 
         for (ExternalJob externalJob : jobs) {
             JobPosting existing = repository
@@ -86,10 +92,11 @@ public class JobIngestionWriter implements IngestionWriter {
                         observedAt
                 ));
                 createdPosting.recordIngestionContext(runId, rawPayload(externalJob));
-                eventRepository.save(JobEvent.capture(
+                eventRepository.save(captureEvent(
                         createdPosting,
                         JobEventType.CREATED,
-                        observedAt
+                        observedAt,
+                        trace
                 ));
                 created++;
                 continue;
@@ -109,10 +116,11 @@ public class JobIngestionWriter implements IngestionWriter {
 
             if (changed) {
                 existing.recordIngestionContext(runId, rawPayload(externalJob));
-                eventRepository.save(JobEvent.capture(
+                eventRepository.save(captureEvent(
                         existing,
                         JobEventType.UPDATED,
-                        observedAt
+                        observedAt,
+                        trace
                 ));
                 updated++;
             } else {
@@ -133,10 +141,11 @@ public class JobIngestionWriter implements IngestionWriter {
             if (!seenSourceJobIds.contains(posting.getSourceJobId())
                     && posting.recordMissing(observedAt)) {
                 posting.recordIngestionContext(runId, posting.getRawPayload());
-                eventRepository.save(JobEvent.capture(
+                eventRepository.save(captureEvent(
                         posting,
                         JobEventType.CLOSED,
-                        observedAt
+                        observedAt,
+                        trace
                 ));
                 closed++;
             }
@@ -162,6 +171,15 @@ public class JobIngestionWriter implements IngestionWriter {
 
     private String rawPayload(ExternalJob job) {
         return objectMapper.writeValueAsString(job);
+    }
+
+    private static JobEvent captureEvent(JobPosting posting,
+            JobEventType eventType, Instant observedAt,
+            TraceContextSnapshot trace) {
+        JobEvent event = JobEvent.capture(posting, eventType, observedAt);
+        event.recordTraceContext(
+                trace.traceParent(), trace.traceState(), trace.baggage());
+        return event;
     }
 
 }

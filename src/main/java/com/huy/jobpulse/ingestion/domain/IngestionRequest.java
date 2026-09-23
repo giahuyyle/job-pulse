@@ -53,6 +53,15 @@ public class IngestionRequest {
     @Column(name = "retry_of_run_id")
     private UUID retryOfRunId;
 
+    @Column(name = "trace_parent", length = 128)
+    private String traceParent;
+
+    @Column(name = "trace_state", length = 1024)
+    private String traceState;
+
+    @Column(name = "trace_baggage", columnDefinition = "TEXT")
+    private String traceBaggage;
+
     @Version
     private long version;
 
@@ -69,11 +78,29 @@ public class IngestionRequest {
     }
 
     public static IngestionRequest create(UUID targetId, Instant now) {
-        return new IngestionRequest(
+        return create(targetId, now, null, null, null);
+    }
+
+    public static IngestionRequest create(UUID targetId, Instant now,
+            String traceParent, String traceState, String traceBaggage) {
+        IngestionRequest request = new IngestionRequest(
                 UUID.randomUUID(),
                 Objects.requireNonNull(targetId),
                 Objects.requireNonNull(now)
         );
+        request.traceParent = traceParent;
+        request.traceState = traceState;
+        request.traceBaggage = traceBaggage;
+        return request;
+    }
+
+    public static IngestionRequest retry(UUID targetId, UUID failedRunId,
+            Instant now, String traceParent, String traceState,
+            String traceBaggage) {
+        IngestionRequest request = create(targetId, now,
+                traceParent, traceState, traceBaggage);
+        request.retryOfRunId = Objects.requireNonNull(failedRunId);
+        return request;
     }
 
     public static IngestionRequest retry(UUID targetId, UUID failedRunId, Instant now) {
@@ -127,4 +154,7 @@ public class IngestionRequest {
     }
 
     public UUID getRetryOfRunId() { return retryOfRunId; }
+    public String getTraceParent() { return traceParent; }
+    public String getTraceState() { return traceState; }
+    public String getTraceBaggage() { return traceBaggage; }
 }

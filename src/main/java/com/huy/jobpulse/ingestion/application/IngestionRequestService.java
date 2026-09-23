@@ -9,6 +9,8 @@ import com.huy.jobpulse.ingestion.infrastructure.IngestionDeadLetterRepository;
 import com.huy.jobpulse.ingestion.domain.IngestionDeadLetter;
 import com.huy.jobpulse.jobs.domain.JobSource;
 import com.huy.jobpulse.observability.JobPulseMetrics;
+import com.huy.jobpulse.observability.TraceContextBridge;
+import com.huy.jobpulse.observability.TraceContextSnapshot;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -40,19 +42,22 @@ public class IngestionRequestService {
     private final Clock clock;
     private final IngestionDeadLetterRepository deadLetters;
     private final JobPulseMetrics metrics;
+    private final TraceContextBridge traceContexts;
 
     public IngestionRequestService(
             IngestionRequestRepository requestRepository,
             IngestionTargetRepository targetRepository,
             Clock clock,
             IngestionDeadLetterRepository deadLetters,
-            JobPulseMetrics metrics
+            JobPulseMetrics metrics,
+            TraceContextBridge traceContexts
     ) {
         this.requestRepository = requestRepository;
         this.targetRepository = targetRepository;
         this.clock = clock;
         this.deadLetters = deadLetters;
         this.metrics = metrics;
+        this.traceContexts = traceContexts;
     }
 
     @Transactional
@@ -100,9 +105,11 @@ public class IngestionRequestService {
                     "This board already has pending or running work"
             );
         }
+        TraceContextSnapshot trace = traceContexts.capture();
         return requestRepository.save(failedRunId == null
-                ? IngestionRequest.create(targetId, clock.instant())
-                : IngestionRequest.retry(targetId, failedRunId, clock.instant()));
+                ? createRequest(targetId, clock.instant(), trace)
+                : IngestionRequest.retry(targetId, failedRunId, clock.instant(),
+                        trace.traceParent(), trace.traceState(), trace.baggage()));
     }
 
     @Transactional(readOnly = true)
@@ -283,8 +290,14 @@ public class IngestionRequestService {
                         OUTSTANDING
                 );
         return existing.orElseGet(() -> requestRepository.save(
-                IngestionRequest.create(targetId, now)
+                createRequest(targetId, now, traceContexts.capture())
         ));
+    }
+
+    private static IngestionRequest createRequest(UUID targetId, Instant now,
+            TraceContextSnapshot trace) {
+        return IngestionRequest.create(targetId, now,
+                trace.traceParent(), trace.traceState(), trace.baggage());
     }
 
     private static String failureMessage(Throwable failure) {

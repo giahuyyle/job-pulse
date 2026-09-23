@@ -11,6 +11,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import com.huy.jobpulse.observability.JobPulseMetrics;
+import com.huy.jobpulse.observability.TraceContextBridge;
+import com.huy.jobpulse.observability.TraceContextSnapshot;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -31,6 +33,7 @@ public class EventOutboxPublisher {
     private final JobEventCodec codec;
     private final Clock clock;
     private final JobPulseMetrics metrics;
+    private final TraceContextBridge traceContexts;
 
     @Autowired
     public EventOutboxPublisher(
@@ -38,13 +41,15 @@ public class EventOutboxPublisher {
             KafkaTemplate<String, String> kafkaTemplate,
             JobEventCodec codec,
             Clock clock,
-            ObjectProvider<JobPulseMetrics> metrics
+            ObjectProvider<JobPulseMetrics> metrics,
+            ObjectProvider<TraceContextBridge> traceContexts
     ) {
         this.repository = repository;
         this.kafkaTemplate = kafkaTemplate;
         this.codec = codec;
         this.clock = clock;
         this.metrics = metrics.getIfAvailable();
+        this.traceContexts = traceContexts.getIfAvailable();
     }
 
     public EventOutboxPublisher(JobEventRepository repository,
@@ -56,6 +61,7 @@ public class EventOutboxPublisher {
         this.codec = codec;
         this.clock = clock;
         this.metrics = null;
+        this.traceContexts = null;
     }
 
     @Scheduled(
@@ -73,6 +79,23 @@ public class EventOutboxPublisher {
     }
 
     private void publish(JobEvent event) {
+        if (traceContexts == null) {
+            publishWithinTrace(event, null);
+            return;
+        }
+        TraceContextSnapshot snapshot = new TraceContextSnapshot(
+                event.getTraceParent(),
+                event.getTraceState(),
+                event.getTraceBaggage()
+        );
+        try (var trace = traceContexts.continueTrace(
+                snapshot, "jobpulse.outbox.publish")) {
+            publishWithinTrace(event, trace);
+        }
+    }
+
+    private void publishWithinTrace(JobEvent event,
+            TraceContextBridge.ContinuedTrace trace) {
         try {
             kafkaTemplate.send(
                     KafkaTopics.JOB_EVENTS,
@@ -87,6 +110,7 @@ public class EventOutboxPublisher {
                     .addKeyValue("eventType", event.getEventType().name().toLowerCase())
                     .log("Outbox event published to Kafka");
         } catch (InterruptedException exception) {
+            if (trace != null) trace.error(exception);
             Thread.currentThread().interrupt();
             event.markPublishFailed(clock.instant(), "Kafka publication interrupted");
             if (metrics != null) metrics.recordOutboxPublication("failed");
@@ -97,6 +121,7 @@ public class EventOutboxPublisher {
                     .setCause(exception)
                     .log("Kafka publication interrupted");
         } catch (Exception exception) {
+            if (trace != null) trace.error(exception);
             String detail = exception.getCause() == null
                     ? exception.getMessage() : exception.getCause().getMessage();
             event.markPublishFailed(clock.instant(), detail);
