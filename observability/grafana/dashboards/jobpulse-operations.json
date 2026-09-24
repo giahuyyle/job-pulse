@@ -96,6 +96,62 @@
         {"refId": "B", "expr": "hikaricp_connections_idle", "legendFormat": "idle"},
         {"refId": "C", "expr": "hikaricp_connections_max", "legendFormat": "max"}
       ]
+    },
+    {
+      "id": 11,
+      "title": "Oldest unpublished event age",
+      "type": "timeseries",
+      "gridPos": {"h": 6, "w": 8, "x": 0, "y": 19},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "jobpulse_outbox_oldest_age_seconds", "legendFormat": "oldest event"}],
+      "fieldConfig": {"defaults": {"unit": "s"}, "overrides": []}
+    },
+    {
+      "id": 12,
+      "title": "Ingestion request backlog",
+      "type": "timeseries",
+      "gridPos": {"h": 6, "w": 8, "x": 8, "y": 19},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"refId": "A", "expr": "jobpulse_ingestion_queued", "legendFormat": "queued"},
+        {"refId": "B", "expr": "jobpulse_ingestion_running", "legendFormat": "running"}
+      ]
+    },
+    {
+      "id": 13,
+      "title": "Process CPU usage",
+      "type": "timeseries",
+      "gridPos": {"h": 6, "w": 8, "x": 16, "y": 19},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "process_cpu_usage", "legendFormat": "process"}],
+      "fieldConfig": {"defaults": {"unit": "percentunit", "min": 0, "max": 1}, "overrides": []}
+    },
+    {
+      "id": 14,
+      "title": "Ingestion p95 duration",
+      "type": "timeseries",
+      "gridPos": {"h": 6, "w": 8, "x": 0, "y": 25},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "histogram_quantile(0.95, sum by (le, provider) (rate(jobpulse_ingestion_duration_seconds_bucket[5m])))", "legendFormat": "{{provider}}"}],
+      "fieldConfig": {"defaults": {"unit": "s"}, "overrides": []}
+    },
+    {
+      "id": 15,
+      "title": "RabbitMQ listener p95 latency",
+      "type": "timeseries",
+      "gridPos": {"h": 6, "w": 8, "x": 8, "y": 25},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "histogram_quantile(0.95, sum by (le) (rate(spring_rabbit_listener_seconds_bucket[5m])))", "legendFormat": "p95"}],
+      "fieldConfig": {"defaults": {"unit": "s"}, "overrides": []}
+    },
+    {
+      "id": 16,
+      "title": "Kafka listener p95 latency",
+      "type": "timeseries",
+      "gridPos": {"h": 6, "w": 8, "x": 16, "y": 25},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "histogram_quantile(0.95, sum by (le) (rate(spring_kafka_listener_seconds_bucket[5m])))", "legendFormat": "p95"}],
+      "fieldConfig": {"defaults": {"unit": "s"}, "overrides": []}
     }
   ],
   "refresh": "5s",
