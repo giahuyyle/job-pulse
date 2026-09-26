@@ -1,6 +1,6 @@
 # JobPulse delivery roadmap
 
-The operations dashboard is intentionally delivered before deployment. Administrative endpoints remain restricted to loopback clients and must not be exposed publicly until authentication and RBAC are complete.
+The operations dashboard and Google sign-in are implemented locally. Public deployment waits for network isolation, secrets, backups, and release controls.
 
 ## Milestone 10 — Admin operations dashboard
 
@@ -18,8 +18,8 @@ Status: implemented locally.
 
 11. Metrics, logs, Prometheus, Grafana, and Tempo — implemented locally
 12. Resilience and failure recovery — implemented locally
-13. Authentication, RBAC, and API security
-14. CI/CD and AWS deployment
+13. Authentication, RBAC, and API security — implemented locally
+14. CI/CD and Google Cloud deployment
 15. Production verification and documentation
 
-Do not make `/admin` or `/api/v1/admin/**` publicly reachable before Milestone 13.
+Do not deploy publicly before Milestone 14 verifies TLS, proxy routing, private infrastructure, secrets, and backups.

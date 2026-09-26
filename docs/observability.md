@@ -23,7 +23,7 @@ Verify:
 curl http://localhost:8080/actuator/health
 curl http://localhost:8080/actuator/health/liveness
 curl http://localhost:8080/actuator/health/readiness
-curl http://localhost:8080/actuator/prometheus
+curl -u metrics:local-monitor-only http://localhost:8080/actuator/prometheus
 ```
 
 - Prometheus targets and alerts: `http://localhost:9090/targets` and `http://localhost:9090/alerts`
@@ -31,6 +31,7 @@ curl http://localhost:8080/actuator/prometheus
 - Tempo API: `http://localhost:3200/ready`
 
 Grafana automatically provisions the Prometheus and Tempo data sources and the **JobPulse Operations** dashboard.
+The Basic credential above is for local development only. The production profile requires `JOBPULSE_MONITOR_PASSWORD`; provision the matching Prometheus secret privately before deployment.
 
 ## Controlled failure drills
 

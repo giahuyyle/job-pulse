@@ -19,11 +19,11 @@ docker compose up -d postgres rabbitmq kafka
 cd frontend && npm install && npm run dev
 ```
 
-Open [http://localhost:5173/jobs](http://localhost:5173/jobs). Vite proxies `/api` and `/actuator` to Spring on port 8080. The operations console at `/admin` and every admin mutation are restricted by the backend to loopback clients; this local restriction is not a substitute for production authentication.
+Open [http://localhost:5173/jobs](http://localhost:5173/jobs). Vite proxies API and Google sign-in routes to Spring on port 8080. Job search is public; Google sign-in is required for saved searches and alerts.
 
-Set `JOBPULSE_ADMIN_ENABLED=false` in every non-development environment. This removes the admin controllers in addition to the loopback request guard.
+To use the operations console, configure a Google OAuth web client and set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `JOBPULSE_ADMIN_EMAILS`, and `JOBPULSE_ADMIN_ENABLED=true`. Admin controllers are disabled by default and require an authenticated admin role when enabled. See [docs/security.md](docs/security.md) for setup, route access, and the CSRF/session model.
 
-The delivery sequence and the explicit administrative deployment gate are tracked in [docs/roadmap.md](docs/roadmap.md). The admin console must remain private until Milestone 13 adds authentication and RBAC.
+The delivery sequence and remaining deployment work are tracked in [docs/roadmap.md](docs/roadmap.md). Public deployment still requires the network, secret, backup, and release controls in Milestone 14.
 
 Operational metrics, alerts, dashboards, structured logging, tracing, and controlled failure drills are documented in [docs/observability.md](docs/observability.md).
 Provider, broker, worker, and outbox recovery procedures are in [docs/runbooks/failure-recovery.md](docs/runbooks/failure-recovery.md), with isolated drill results in [docs/evidence/milestone-12/](docs/evidence/milestone-12/).
