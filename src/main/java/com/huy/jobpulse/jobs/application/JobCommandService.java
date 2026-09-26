@@ -5,6 +5,7 @@ import com.huy.jobpulse.jobs.domain.JobPosting;
 import com.huy.jobpulse.jobs.infrastructure.JobPostingRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -61,6 +62,23 @@ public class JobCommandService {
                 observedAt
         );
 
-        return repository.save(job);
+        try {
+            return repository.saveAndFlush(job);
+        } catch (DataIntegrityViolationException conflict) {
+            Throwable cause = conflict;
+            boolean unique = false;
+            while (cause != null) {
+                if (cause instanceof java.sql.SQLException sql
+                        && "23505".equals(sql.getSQLState())) {
+                    unique = true;
+                    break;
+                }
+                cause = cause.getCause();
+            }
+            if (!unique) throw conflict;
+            throw new DuplicateJobException("Job already exists for source identity: "
+                    + request.source() + "/" + request.sourceAccount() + "/"
+                    + request.sourceJobId());
+        }
     }
 }
