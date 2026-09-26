@@ -1,0 +1,8 @@
+2026-09-26 UTC — isolated Compose project jobpulse-m12, fake Greenhouse provider
+
+Timeout drill:
+- Fake provider delayed its HTTP response for 12 seconds; JobPulse's response timeout is 10 seconds.
+- Prometheus showed jobpulse_provider_timeouts_total{provider="greenhouse"} = 2 and jobpulse_provider_retries_total{provider="greenhouse",reason="transient"} = 2 while the request was running.
+- After restoring the provider, request b278fe23-b669-4bbe-b711-16e0dd5d2913 reached SUCCEEDED on delivery attempt 2.
+
+Automated checks: ProviderHttpClientTimeoutTest, ProviderFetchPolicyTest. The latter verifies two 503 responses then success on the third call, no retry on 401, and refusal to sleep for a Retry-After of 120 seconds.

@@ -1,0 +1,13 @@
+2026-09-26 UTC — isolated Compose project jobpulse-m12
+
+Kafka outage:
+- Kafka stopped before request d714ebe3-ceba-4bad-ae83-a2bca8e04099 was ingested.
+- Request reached SUCCEEDED; database counts were postings=1, unpublished job_events=1, failed job_events=0.
+- After Kafka restarted, unpublished job_events returned to 0.
+
+Crash-after-publish simulation:
+- Event 8e1f5655-fba6-499d-8db8-b3a0bd82c139 was placed into PUBLISHING with an expired lease and published_at=NULL in the isolated database, representing Kafka acceptance before the database acknowledgement.
+- The publisher reclaimed and republished it. Final state: PUBLISHED, publish_attempts=2.
+- Consumer deduplication held: job_event_consumptions remained 10 and daily_job_stats total remained 5 before and after replay.
+
+OutboxLeaseRecoveryTest also covers stale-owner rejection and deferred publication after failure.

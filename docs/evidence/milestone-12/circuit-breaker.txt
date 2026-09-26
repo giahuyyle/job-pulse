@@ -1,0 +1,10 @@
+2026-09-26 UTC — isolated Compose project jobpulse-m12
+
+The fake provider returned HTTP 503 for four Greenhouse boards. Prometheus showed:
+jobpulse_circuit_state{provider="greenhouse"} 1
+jobpulse_circuit_state{provider="lever"} 0
+jobpulse_circuit_state{provider="ashby"} 0
+jobpulse_provider_requests_total{provider="greenhouse",outcome="circuit_open"} 1
+jobpulse_provider_retries_total{provider="greenhouse",reason="transient"} 6
+
+The Greenhouse circuit failed subsequent work quickly while the other provider circuits remained closed. ProviderFetchPolicyTest verifies half-open probes and closure after successful calls.

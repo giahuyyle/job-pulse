@@ -1,0 +1,12 @@
+2026-09-26 UTC — isolated Compose project jobpulse-m12
+
+RabbitMQ outage:
+- RabbitMQ stopped before a new ingestion command.
+- POST /api/v1/ingestions returned HTTP 202 with durable request 4b2b65f8-4ae9-4e13-8cd4-d275a3b5cbab in PENDING state and publishedAt=null.
+- After RabbitMQ restarted, that request reached SUCCEEDED.
+
+Provider failure and selected DLQ replay:
+- Four controlled HTTP 503 requests exhausted their delivery attempts: ingestion_requests FAILED=4, open ingestion_dead_letters=4.
+- After provider restoration, POST /api/v1/admin/dead-letters/5b7e3d5e-c020-445c-90b9-f6f478bd672b/replay returned HTTP 200 for the original request ID 1e820084-8c9b-4a4d-a115-43240016cddf.
+- Stored replay metadata: actor milestone-12-drill; reason "Fake provider restored after controlled 503 outage".
+- The original request then reached SUCCEEDED with attempt_count=1 and one posting for its source account.

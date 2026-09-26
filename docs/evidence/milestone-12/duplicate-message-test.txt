@@ -1,0 +1,5 @@
+2026-09-26 UTC — automated and isolated drill evidence
+
+- IngestionWorkerTest.duplicateDeliveryCommitsIngestionOnlyOnce delivered the same request message twice; coordinator calls=1, request status SUCCEEDED, attempt_count=1.
+- DuplicateJobConcurrencyTest launched two concurrent creates for one source identity. One succeeded and the PostgreSQL unique key left one logical posting.
+- Isolated Kafka duplicate-event drill republished one event ID; job_event_consumptions stayed at 10 and daily_job_stats total stayed at 5.

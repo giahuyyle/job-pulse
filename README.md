@@ -26,6 +26,7 @@ Set `JOBPULSE_ADMIN_ENABLED=false` in every non-development environment. This re
 The delivery sequence and the explicit administrative deployment gate are tracked in [docs/roadmap.md](docs/roadmap.md). The admin console must remain private until Milestone 13 adds authentication and RBAC.
 
 Operational metrics, alerts, dashboards, structured logging, tracing, and controlled failure drills are documented in [docs/observability.md](docs/observability.md).
+Provider, broker, worker, and outbox recovery procedures are in [docs/runbooks/failure-recovery.md](docs/runbooks/failure-recovery.md), with isolated drill results in [docs/evidence/milestone-12/](docs/evidence/milestone-12/).
 
 ## Demo path
 

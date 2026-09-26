@@ -1,0 +1,7 @@
+2026-09-26 UTC — isolated Compose project jobpulse-m12
+
+- Fake provider was delayed. Request 22681062-a53f-4f8e-a1dd-f55919fe9b48 was observed as RUNNING with attempt_count=1 and a non-null lease.
+- The isolated app container was killed with SIGKILL while that request was claimed.
+- Its lease expiry was advanced in the isolated database to simulate elapsed lease time; the fake provider was restored; the app restarted.
+- Structured startup logs recorded "Expired ingestion leases reclaimed" with reclaimed=1 and "Startup recovery completed" with ingestionRequestsReclaimed=1.
+- The same request reached SUCCEEDED with attempt_count=2. The existing posting remained one logical record.
