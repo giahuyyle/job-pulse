@@ -25,6 +25,7 @@ public class BacklogGaugeUpdater {
     private final IngestionDeadLetterRepository deadLetters;
     private final Clock clock;
     private final AtomicLong unpublished = new AtomicLong();
+    private final AtomicLong failedOutbox = new AtomicLong();
     private final AtomicLong oldestAgeSeconds = new AtomicLong();
     private final AtomicLong queued = new AtomicLong();
     private final AtomicLong running = new AtomicLong();
@@ -41,6 +42,8 @@ public class BacklogGaugeUpdater {
         this.clock = clock;
         register(registry, "jobpulse.outbox.unpublished", unpublished,
                 "Unpublished transactional outbox events");
+        register(registry, "jobpulse.outbox.failed", failedOutbox,
+                "Outbox events that exhausted publication attempts");
         register(registry, "jobpulse.outbox.oldest_age_seconds", oldestAgeSeconds,
                 "Age of the oldest unpublished outbox event in seconds");
         register(registry, "jobpulse.ingestion.queued", queued,
@@ -58,6 +61,7 @@ public class BacklogGaugeUpdater {
     public void refresh() {
         try {
             unpublished.set(events.countByPublishedAtIsNull());
+            failedOutbox.set(events.countByPublishedAtIsNullAndPublishAttemptsGreaterThanEqual(10));
             var oldest = events.findOldestUnpublishedAt();
             oldestAgeSeconds.set(oldest == null ? 0 : Math.max(0,
                     Duration.between(oldest, clock.instant()).toSeconds()));

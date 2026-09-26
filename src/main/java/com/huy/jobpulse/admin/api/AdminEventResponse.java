@@ -12,7 +12,8 @@ public record AdminEventResponse(UUID id, UUID jobId, JobEventType type,
         JobEventEnvelope payload) {
     public static AdminEventResponse from(JobEvent event) {
         String status = event.getPublishedAt() != null ? "PUBLISHED"
-                : event.getLastPublishError() != null ? "FAILED" : "UNPUBLISHED";
+                : event.isPublishFailed() ? "FAILED"
+                : "PUBLISHING".equals(event.getPublishStatus()) ? "PUBLISHING" : "UNPUBLISHED";
         return new AdminEventResponse(event.getId(), event.getJobPostingId(),
                 event.getEventType(), event.getSchemaVersion(), status,
                 event.getCreatedAt(), event.getPublishedAt(),

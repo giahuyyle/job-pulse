@@ -60,6 +60,25 @@ public class JobPulseMetrics {
                 "queue", normalize(queue)).increment();
     }
 
+    public void recordLeaseReclaimed(String outcome) {
+        registry.counter("jobpulse.ingestion.leases.reclaimed",
+                "outcome", normalize(outcome)).increment();
+    }
+
+    public void recordRabbitRedelivery(String outcome) {
+        registry.counter("jobpulse.rabbit.redeliveries",
+                "queue", "ingestion", "outcome", normalize(outcome)).increment();
+    }
+
+    public void recordOutboxRetry(String eventType, String outcome) {
+        registry.counter("jobpulse.outbox.retries",
+                "event_type", normalize(eventType), "outcome", normalize(outcome)).increment();
+    }
+
+    public void recordOutboxLeaseReclaimed(long count) {
+        if (count > 0) registry.counter("jobpulse.outbox.leases.reclaimed").increment(count);
+    }
+
     public void recordOutboxPublication(String outcome) {
         registry.counter("jobpulse.outbox.publications",
                 "outcome", normalize(outcome)).increment();

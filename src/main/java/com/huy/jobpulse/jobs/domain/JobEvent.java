@@ -66,6 +66,18 @@ public class JobEvent {
     @Column(name = "retry_requested_at")
     private Instant retryRequestedAt;
 
+    @Column(name = "next_attempt_at", nullable = false)
+    private Instant nextAttemptAt;
+
+    @Column(name = "publish_status", nullable = false, length = 24)
+    private String publishStatus;
+
+    @Column(name = "lease_owner")
+    private UUID leaseOwner;
+
+    @Column(name = "lease_expires_at")
+    private Instant leaseExpiresAt;
+
     @Column(name = "trace_parent", length = 128)
     private String traceParent;
 
@@ -89,6 +101,8 @@ public class JobEvent {
         this.jobPostingId = posting.getId();
         this.eventType = eventType;
         this.createdAt = createdAt;
+        this.nextAttemptAt = createdAt;
+        this.publishStatus = "PENDING";
         this.schemaVersion = 1;
         this.source = posting.getSource();
         this.sourceAccount = posting.getSourceAccount();
@@ -163,6 +177,10 @@ public class JobEvent {
         lastPublishAttemptAt = Objects.requireNonNull(publishedAt);
         lastPublishError = null;
         retryRequestedAt = null;
+        nextAttemptAt = publishedAt;
+        publishStatus = "PUBLISHED";
+        leaseOwner = null;
+        leaseExpiresAt = null;
         if (this.publishedAt == null) {
             this.publishedAt = publishedAt;
         }
@@ -173,12 +191,31 @@ public class JobEvent {
         lastPublishAttemptAt = Objects.requireNonNull(attemptedAt);
         lastPublishError = error == null || error.isBlank()
                 ? "Kafka publication failed" : error;
+        long base = Math.min(900_000L, 5_000L << Math.min(17, publishAttempts - 1));
+        long jitter = java.util.concurrent.ThreadLocalRandom.current()
+                .nextLong(Math.max(1, base / 4));
+        nextAttemptAt = attemptedAt.plusMillis(Math.min(900_000L, base + jitter));
+        publishStatus = publishAttempts >= 10 ? "FAILED" : "PENDING";
+        leaseOwner = null;
+        leaseExpiresAt = null;
     }
 
     public int getPublishAttempts() { return publishAttempts; }
     public String getLastPublishError() { return lastPublishError; }
     public Instant getLastPublishAttemptAt() { return lastPublishAttemptAt; }
     public Instant getRetryRequestedAt() { return retryRequestedAt; }
+    public Instant getNextAttemptAt() { return nextAttemptAt; }
+    public boolean isPublishFailed() { return "FAILED".equals(publishStatus); }
+    public String getPublishStatus() { return publishStatus; }
+    public UUID getLeaseOwner() { return leaseOwner; }
+    public Instant getLeaseExpiresAt() { return leaseExpiresAt; }
+
+    public void claim(UUID owner, Instant expiresAt) {
+        if (!"PENDING".equals(publishStatus)) throw new IllegalStateException("Event is not pending");
+        publishStatus = "PUBLISHING";
+        leaseOwner = Objects.requireNonNull(owner);
+        leaseExpiresAt = Objects.requireNonNull(expiresAt);
+    }
     public String getTraceParent() { return traceParent; }
     public String getTraceState() { return traceState; }
     public String getTraceBaggage() { return traceBaggage; }
@@ -194,7 +231,15 @@ public class JobEvent {
         if (publishedAt != null) {
             throw new IllegalArgumentException("Published events cannot be retried");
         }
+        if (!"FAILED".equals(publishStatus) && !"PENDING".equals(publishStatus)) {
+            throw new IllegalArgumentException("Publishing events cannot be retried manually");
+        }
         retryRequestedAt = Objects.requireNonNull(requestedAt);
         lastPublishError = null;
+        nextAttemptAt = requestedAt;
+        publishAttempts = 0;
+        publishStatus = "PENDING";
+        leaseOwner = null;
+        leaseExpiresAt = null;
     }
 }
