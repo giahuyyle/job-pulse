@@ -102,9 +102,14 @@ public class AdminOperationsController {
     }
 
     @PostMapping("/dead-letters/{id}/replay")
-    public IngestionRequestResponse replay(@PathVariable UUID id, HttpServletRequest request) {
-        guard.requireLocal(request); var result=requests.replayDeadLetter(id);
-        audit.record(request,"DLQ_MESSAGE_REPLAYED","DEAD_LETTER",id,null,result);
+    public IngestionRequestResponse replay(@PathVariable UUID id,
+            @org.springframework.web.bind.annotation.RequestBody(required=false) ReplayDeadLetterRequest body,
+            HttpServletRequest request) {
+        guard.requireLocal(request);
+        String reason = body == null ? "Manual replay" : body.reason();
+        var result=requests.replayDeadLetter(id, audit.actor(request), reason);
+        audit.record(request,"DLQ_MESSAGE_REPLAYED","DEAD_LETTER",id,
+                java.util.Map.of("reason",reason),result);
         return IngestionRequestResponse.from(result);
     }
 
@@ -122,8 +127,9 @@ public class AdminOperationsController {
         if(from!=null) spec=spec.and((r,q,b)->b.greaterThanOrEqualTo(r.get("createdAt"),from));
         if(to!=null) spec=spec.and((r,q,b)->b.lessThanOrEqualTo(r.get("createdAt"),to));
         if("PUBLISHED".equalsIgnoreCase(status)) spec=spec.and((r,q,b)->b.isNotNull(r.get("publishedAt")));
-        if("UNPUBLISHED".equalsIgnoreCase(status)) spec=spec.and((r,q,b)->b.isNull(r.get("publishedAt")));
-        if("FAILED".equalsIgnoreCase(status)) spec=spec.and((r,q,b)->b.isNotNull(r.get("lastPublishError")));
+        if("UNPUBLISHED".equalsIgnoreCase(status)) spec=spec.and((r,q,b)->b.equal(r.get("publishStatus"),"PENDING"));
+        if("PUBLISHING".equalsIgnoreCase(status)) spec=spec.and((r,q,b)->b.equal(r.get("publishStatus"),"PUBLISHING"));
+        if("FAILED".equalsIgnoreCase(status)) spec=spec.and((r,q,b)->b.equal(r.get("publishStatus"),"FAILED"));
         if(Boolean.TRUE.equals(published)) spec=spec.and((r,q,b)->b.isNotNull(r.get("publishedAt")));
         if(Boolean.FALSE.equals(published)) spec=spec.and((r,q,b)->b.isNull(r.get("publishedAt")));
         return AdminPageResponse.from(events.findAll(spec,PageRequest.of(page,size,
