@@ -7,13 +7,10 @@ import com.huy.jobpulse.ingestion.application.ExternalJob;
 import com.huy.jobpulse.ingestion.application.JobSourceClient;
 import com.huy.jobpulse.jobs.domain.JobSource;
 import com.huy.jobpulse.jobs.domain.RemotePolicy;
-import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 
-import java.net.http.HttpClient;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
@@ -32,7 +29,7 @@ public class LeverJobSourceClient implements JobSourceClient, BoardVerifier {
     public LeverJobSourceClient() {
         this(RestClient.builder()
                 .baseUrl(BASE_URL)
-                .requestFactory(requestFactory())
+                .requestFactory(ProviderHttpClient.requestFactory())
                 .build());
     }
 
@@ -156,15 +153,7 @@ public class LeverJobSourceClient implements JobSourceClient, BoardVerifier {
         return value == null || value.isBlank();
     }
 
-    private static JdkClientHttpRequestFactory requestFactory() {
-        HttpClient httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(5))
-                .build();
-        JdkClientHttpRequestFactory requestFactory =
-                new JdkClientHttpRequestFactory(httpClient);
-        requestFactory.setReadTimeout(Duration.ofSeconds(20));
-        return requestFactory;
-    }
+
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     record LeverJob(

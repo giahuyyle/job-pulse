@@ -2,6 +2,8 @@ package com.huy.jobpulse.ingestion.application;
 
 import com.huy.jobpulse.jobs.domain.JobSource;
 import org.springframework.stereotype.Service;
+import com.huy.jobpulse.ingestion.error.PermanentProviderException;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,17 +21,26 @@ public class IngestionService implements IngestionCoordinator {
     private final JobSourceRegistry sourceRegistry;
     private final IngestionWriter writer;
     private final RunRecorder runRecorder;
+    private final ProviderFetchPolicy fetchPolicy;
     private final Set<IngestionKey> activeIngestions =
             ConcurrentHashMap.newKeySet();
 
+    @Autowired
     public IngestionService(
             JobSourceRegistry sourceRegistry,
             IngestionWriter writer,
-            RunRecorder runRecorder
+            RunRecorder runRecorder,
+            ProviderFetchPolicy fetchPolicy
     ) {
         this.sourceRegistry = sourceRegistry;
         this.writer = writer;
         this.runRecorder = runRecorder;
+        this.fetchPolicy = fetchPolicy;
+    }
+
+    public IngestionService(JobSourceRegistry sourceRegistry,
+            IngestionWriter writer, RunRecorder runRecorder) {
+        this(sourceRegistry, writer, runRecorder, null);
     }
 
     @Override
@@ -70,13 +81,16 @@ public class IngestionService implements IngestionCoordinator {
         UUID runId = null;
         try {
             runId = runRecorder.start(source, normalizedSourceAccount);
-            List<ExternalJob> jobs = List.copyOf(
-                    client.fetchAll(
-                            normalizedSourceAccount,
-                            normalizedCompany
-                    )
-            );
-            validateCompleteSnapshot(jobs);
+            List<ExternalJob> fetched = fetchPolicy == null
+                    ? client.fetchAll(normalizedSourceAccount, normalizedCompany)
+                    : fetchPolicy.fetch(source, normalizedSourceAccount,
+                            () -> client.fetchAll(normalizedSourceAccount,
+                                    normalizedCompany));
+            if (fetched == null) {
+                throw new PermanentProviderException("Job source returned no snapshot", null);
+            }
+            validateCompleteSnapshot(fetched);
+            List<ExternalJob> jobs = List.copyOf(fetched);
             IngestionResult result = writer.apply(
                     runId,
                     source,
@@ -113,14 +127,13 @@ public class IngestionService implements IngestionCoordinator {
                     || isBlank(job.company())
                     || isBlank(job.title())
                     || isBlank(job.applyUrl())) {
-                throw new IllegalStateException(
-                        "Job source returned an invalid posting"
-                );
+                throw new PermanentProviderException(
+                        "Job source returned an invalid posting", null);
             }
             if (!sourceJobIds.add(job.sourceJobId())) {
-                throw new IllegalStateException(
+                throw new PermanentProviderException(
                         "Job source returned duplicate posting ID "
-                                + job.sourceJobId()
+                                + job.sourceJobId(), null
                 );
             }
         }

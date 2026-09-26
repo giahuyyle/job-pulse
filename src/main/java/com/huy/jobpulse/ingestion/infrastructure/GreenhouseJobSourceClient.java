@@ -8,15 +8,12 @@ import com.huy.jobpulse.ingestion.application.ExternalJob;
 import com.huy.jobpulse.ingestion.application.JobSourceClient;
 import com.huy.jobpulse.jobs.domain.JobSource;
 import com.huy.jobpulse.jobs.domain.RemotePolicy;
-import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 
-import java.net.http.HttpClient;
-import java.time.Duration;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -41,7 +38,7 @@ public class GreenhouseJobSourceClient
     ) {
         this(RestClient.builder()
                 .baseUrl(normalizeBaseUrl(baseUrl) + "/v1/boards")
-                .requestFactory(requestFactory())
+                .requestFactory(ProviderHttpClient.requestFactory())
                 .build());
     }
 
@@ -99,15 +96,7 @@ public class GreenhouseJobSourceClient
                 .toList();
     }
 
-    private static JdkClientHttpRequestFactory requestFactory() {
-        HttpClient httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(5))
-                .build();
-        JdkClientHttpRequestFactory requestFactory =
-                new JdkClientHttpRequestFactory(httpClient);
-        requestFactory.setReadTimeout(Duration.ofSeconds(20));
-        return requestFactory;
-    }
+
 
     @Override
     public void validateSourceAccount(String sourceAccount) {
