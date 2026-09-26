@@ -5,6 +5,9 @@ public final class IngestionAmqpTopology {
     public static final String EXCHANGE = "jobpulse.ingestion.exchange";
     public static final String QUEUE = "jobpulse.ingestion";
     public static final String ROUTING_KEY = "jobpulse.ingestion.request";
+    public static final String RETRY_EXCHANGE = "jobpulse.ingestion.retry.exchange";
+    public static final String RETRY_5S = "jobpulse.ingestion.retry.5s";
+    public static final String RETRY_30S = "jobpulse.ingestion.retry.30s";
     public static final String DEAD_LETTER_EXCHANGE =
             "jobpulse.ingestion.dlx";
     public static final String DEAD_LETTER_QUEUE =

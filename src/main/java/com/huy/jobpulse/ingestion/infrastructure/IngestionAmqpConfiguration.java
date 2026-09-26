@@ -26,6 +26,43 @@ public class IngestionAmqpConfiguration {
     }
 
     @Bean
+    DirectExchange ingestionRetryExchange() {
+        return new DirectExchange(IngestionAmqpTopology.RETRY_EXCHANGE, true, false);
+    }
+
+    @Bean
+    Queue ingestionRetry5sQueue() {
+        return retryQueue(IngestionAmqpTopology.RETRY_5S, 5_000);
+    }
+
+    @Bean
+    Queue ingestionRetry30sQueue() {
+        return retryQueue(IngestionAmqpTopology.RETRY_30S, 30_000);
+    }
+
+    private static Queue retryQueue(String name, int ttl) {
+        return QueueBuilder.durable(name)
+                .ttl(ttl)
+                .deadLetterExchange(IngestionAmqpTopology.EXCHANGE)
+                .deadLetterRoutingKey(IngestionAmqpTopology.ROUTING_KEY)
+                .build();
+    }
+
+    @Bean
+    Binding ingestionRetry5sBinding(Queue ingestionRetry5sQueue,
+            DirectExchange ingestionRetryExchange) {
+        return BindingBuilder.bind(ingestionRetry5sQueue)
+                .to(ingestionRetryExchange).with(IngestionAmqpTopology.RETRY_5S);
+    }
+
+    @Bean
+    Binding ingestionRetry30sBinding(Queue ingestionRetry30sQueue,
+            DirectExchange ingestionRetryExchange) {
+        return BindingBuilder.bind(ingestionRetry30sQueue)
+                .to(ingestionRetryExchange).with(IngestionAmqpTopology.RETRY_30S);
+    }
+
+    @Bean
     Queue ingestionQueue() {
         return QueueBuilder.durable(IngestionAmqpTopology.QUEUE)
                 .deadLetterExchange(

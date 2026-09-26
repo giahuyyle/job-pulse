@@ -30,17 +30,25 @@ public class RabbitIngestionPublisher implements IngestionPublisher {
 
     @Override
     public void publish(UUID requestId) {
+        send(requestId, IngestionAmqpTopology.EXCHANGE, IngestionAmqpTopology.ROUTING_KEY);
+    }
+
+    @Override
+    public void publishRetry(UUID requestId, int completedAttempts) {
+        String queue = completedAttempts <= 1
+                ? IngestionAmqpTopology.RETRY_5S : IngestionAmqpTopology.RETRY_30S;
+        send(requestId, IngestionAmqpTopology.RETRY_EXCHANGE, queue);
+    }
+
+    private void send(UUID requestId, String exchange, String routingKey) {
         Message message = MessageBuilder
                 .withBody(serialize(new IngestionMessage(requestId)))
                 .setContentType(MessageProperties.CONTENT_TYPE_JSON)
                 .setDeliveryMode(MessageDeliveryMode.PERSISTENT)
+                .setMessageId(requestId.toString())
                 .build();
         rabbitTemplate.invoke(operations -> {
-            operations.send(
-                    IngestionAmqpTopology.EXCHANGE,
-                    IngestionAmqpTopology.ROUTING_KEY,
-                    message
-            );
+            operations.send(exchange, routingKey, message);
             operations.waitForConfirmsOrDie(CONFIRM_TIMEOUT_MILLIS);
             return null;
         });
