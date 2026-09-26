@@ -45,11 +45,65 @@ groups:
           summary: Transactional outbox is accumulating unpublished events
 
       - alert: JobPulseDeadLettersPresent
-        expr: |
-          sum(
-            increase(jobpulse_messages_dead_lettered_total[10m])
-          ) > 0
+        expr: jobpulse_messages_dead_letter_count > 0
         labels:
           severity: warning
         annotations:
-          summary: Messages have entered a dead-letter queue
+          summary: Ingestion dead letters need review
+
+      - alert: JobPulseProviderCircuitOpen
+        expr: jobpulse_circuit_state{state="open"} == 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Provider circuit remains open
+
+      - alert: JobPulseProviderRetriesHigh
+        expr: sum by (provider) (rate(jobpulse_provider_retries_total[5m])) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Provider retries are rising
+
+      - alert: JobPulseProviderTimeoutsHigh
+        expr: sum by (provider) (rate(jobpulse_provider_timeouts_total[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Provider timeouts are rising
+
+      - alert: JobPulseOutboxFailed
+        expr: jobpulse_outbox_failed > 0
+        labels:
+          severity: critical
+        annotations:
+          summary: An outbox event exhausted publication attempts
+
+      - alert: JobPulseOutboxOldestPending
+        expr: jobpulse_outbox_oldest_age_seconds > 300
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: Oldest unpublished outbox event exceeds five minutes
+
+      - alert: JobPulseLeasesReclaimedRepeatedly
+        expr: sum(increase(jobpulse_ingestion_leases_reclaimed_total[10m])) > 3
+        labels:
+          severity: warning
+        annotations:
+          summary: Ingestion workers repeatedly lose leases
+
+      - alert: JobPulseIngestionFailureRatioHigh
+        expr: |
+          sum(rate(jobpulse_ingestion_runs_total{outcome="failed"}[10m]))
+          /
+          clamp_min(sum(rate(jobpulse_ingestion_runs_total[10m])), 0.001) > 0.25
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: More than a quarter of ingestion runs are failing

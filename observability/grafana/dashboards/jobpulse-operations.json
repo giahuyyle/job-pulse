@@ -152,6 +152,61 @@
       "datasource": {"type": "prometheus", "uid": "prometheus"},
       "targets": [{"refId": "A", "expr": "histogram_quantile(0.95, sum by (le) (rate(spring_kafka_listener_seconds_bucket[5m])))", "legendFormat": "p95"}],
       "fieldConfig": {"defaults": {"unit": "s"}, "overrides": []}
+    },
+    {
+      "id": 17,
+      "title": "Provider retries and timeouts",
+      "type": "timeseries",
+      "gridPos": {"h": 7, "w": 12, "x": 0, "y": 31},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"refId": "A", "expr": "sum by (provider) (rate(jobpulse_provider_retries_total[5m]))", "legendFormat": "{{provider}} retries/s"},
+        {"refId": "B", "expr": "sum by (provider) (rate(jobpulse_provider_timeouts_total[5m]))", "legendFormat": "{{provider}} timeouts/s"}
+      ]
+    },
+    {
+      "id": 18,
+      "title": "Provider circuit open",
+      "type": "timeseries",
+      "gridPos": {"h": 7, "w": 12, "x": 12, "y": 31},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "jobpulse_circuit_state{state=\"open\"}", "legendFormat": "{{provider}}"}]
+    },
+    {
+      "id": 19,
+      "title": "Outbox failed events",
+      "type": "stat",
+      "gridPos": {"h": 6, "w": 6, "x": 0, "y": 38},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "jobpulse_outbox_failed"}]
+    },
+    {
+      "id": 20,
+      "title": "Oldest unpublished event age",
+      "type": "timeseries",
+      "gridPos": {"h": 6, "w": 6, "x": 6, "y": 38},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "jobpulse_outbox_oldest_age_seconds"}],
+      "fieldConfig": {"defaults": {"unit": "s"}, "overrides": []}
+    },
+    {
+      "id": 21,
+      "title": "Lease reclamation and Rabbit redelivery",
+      "type": "timeseries",
+      "gridPos": {"h": 6, "w": 6, "x": 12, "y": 38},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"refId": "A", "expr": "sum(rate(jobpulse_ingestion_leases_reclaimed_total[5m]))", "legendFormat": "leases/s"},
+        {"refId": "B", "expr": "sum(rate(jobpulse_rabbit_redeliveries_total[5m]))", "legendFormat": "redeliveries/s"}
+      ]
+    },
+    {
+      "id": 22,
+      "title": "Outbox retry outcomes",
+      "type": "timeseries",
+      "gridPos": {"h": 6, "w": 6, "x": 18, "y": 38},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "sum by (outcome) (rate(jobpulse_outbox_retries_total[5m]))", "legendFormat": "{{outcome}}"}]
     }
   ],
   "refresh": "5s",
