@@ -6,6 +6,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.test.web.servlet.MockMvc;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
@@ -24,7 +25,8 @@ class AdminDisabledIntegrationTest {
 
     @Test
     void adminEndpointsAreNotRegisteredWhenDisabled() throws Exception {
-        mvc.perform(get("/api/v1/admin/overview"))
+        mvc.perform(get("/api/v1/admin/overview")
+                        .with(user("admin").roles("ADMIN")))
                 .andExpect(status().isNotFound());
     }
 }

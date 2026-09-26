@@ -1,7 +1,7 @@
 package com.huy.jobpulse.admin.api;
 
 import com.huy.jobpulse.discovery.api.CompanySeedResponse;
-import com.huy.jobpulse.discovery.api.LocalAdminGuard;
+import com.huy.jobpulse.discovery.api.AdminGuard;
 import com.huy.jobpulse.discovery.domain.CompanySeed;
 import com.huy.jobpulse.discovery.domain.CompanySeedStatus;
 import com.huy.jobpulse.discovery.infrastructure.CompanySeedRepository;
@@ -60,7 +60,7 @@ public class AdminController {
     private final JobEventRepository events;
     private final IngestionTargetService targetService;
     private final IngestionRequestService requestService;
-    private final LocalAdminGuard guard;
+    private final AdminGuard guard;
     private final Clock clock;
     private final AdminAuditService audit;
     private final IngestionDeadLetterRepository deadLetters;
@@ -71,7 +71,7 @@ public class AdminController {
             IngestionRequestRepository requests, IngestionRunRepository runs,
             CompanySeedRepository seeds, JobEventRepository events,
             IngestionTargetService targetService,
-            IngestionRequestService requestService, LocalAdminGuard guard,
+            IngestionRequestService requestService, AdminGuard guard,
             Clock clock, AdminAuditService audit,
             IngestionDeadLetterRepository deadLetters,
             ObjectProvider<RabbitAdmin> rabbitAdmin,
@@ -93,7 +93,7 @@ public class AdminController {
 
     @GetMapping("/overview")
     public AdminOverviewResponse overview(HttpServletRequest request) {
-        guard.requireLocal(request);
+        guard.requireAdmin(request);
         var successful = runs.findFirstByStatusOrderByCompletedAtDesc(
                 IngestionRunStatus.SUCCEEDED);
         var now = clock.instant();
@@ -109,7 +109,7 @@ public class AdminController {
 
     @GetMapping("/summary")
     public AdminSummaryResponse summary(HttpServletRequest request) {
-        guard.requireLocal(request);
+        guard.requireAdmin(request);
         var now = clock.instant();
         IngestionRun lastRun = runs.findFirstByOrderByStartedAtDesc();
         long totalTargets = targets.count();
@@ -140,7 +140,7 @@ public class AdminController {
 
     @GetMapping("/events/summary")
     public EventSummary events(HttpServletRequest request) {
-        guard.requireLocal(request);
+        guard.requireAdmin(request);
         return new EventSummary(events.countByPublishedAtIsNull(),
                 events.findOldestUnpublishedAt());
     }
@@ -150,7 +150,7 @@ public class AdminController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             HttpServletRequest request) {
-        guard.requireLocal(request);
+        guard.requireAdmin(request);
         Page<IngestionTargetResponse> result = targets
                 .findAllByOrderByCompanyAsc(pageable(page, size))
                 .map(IngestionTargetResponse::from);
@@ -162,7 +162,7 @@ public class AdminController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             HttpServletRequest request) {
-        guard.requireLocal(request);
+        guard.requireAdmin(request);
         return AdminPageResponse.from(targets.findAllByOrderByCompanyAsc(pageable(page, size))
                 .map(this::boardResponse));
     }
@@ -172,7 +172,7 @@ public class AdminController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             HttpServletRequest request) {
-        guard.requireLocal(request);
+        guard.requireAdmin(request);
         return AdminPageResponse.from(requests
                 .findAllByOrderByCreatedAtDesc(pageable(page, size))
                 .map(IngestionRequestResponse::from));
@@ -186,7 +186,7 @@ public class AdminController {
             @RequestParam(required = false) UUID boardId,
             @RequestParam(required = false) JobSource provider,
             HttpServletRequest request) {
-        guard.requireLocal(request);
+        guard.requireAdmin(request);
         Pageable pageable = pageable(page, size);
         Specification<IngestionRun> spec = (root, query, builder) -> builder.conjunction();
         if (status != null) spec = spec.and((root, query, builder) ->
@@ -209,7 +209,7 @@ public class AdminController {
     public List<CompanySeedResponse> discovery(
             @RequestParam(defaultValue = "NEEDS_REVIEW") CompanySeedStatus status,
             HttpServletRequest request) {
-        guard.requireLocal(request);
+        guard.requireAdmin(request);
         return seeds.findAllByStatusOrderByCompanyNameAsc(status).stream()
                 .map(CompanySeedResponse::from).toList();
     }
@@ -217,7 +217,7 @@ public class AdminController {
     @PostMapping("/targets/{id}/run")
     public IngestionRequestResponse runNow(@PathVariable UUID id,
             HttpServletRequest request) {
-        guard.requireLocal(request);
+        guard.requireAdmin(request);
         var result = requestService.requestTarget(id);
         audit.record(request, "BOARD_RUN_TRIGGERED", "INGESTION_TARGET", id, null, result);
         return IngestionRequestResponse.from(result);
@@ -227,7 +227,7 @@ public class AdminController {
     public IngestionTargetResponse createTarget(
             @Valid @RequestBody CreateIngestionTargetRequest body,
             HttpServletRequest request) {
-        guard.requireLocal(request);
+        guard.requireAdmin(request);
         var result = targetService.create(body);
         audit.record(request, "BOARD_CREATED", "INGESTION_TARGET", result.getId(), null,
                 IngestionTargetResponse.from(result));
@@ -238,7 +238,7 @@ public class AdminController {
     public AdminBoardResponse createBoard(
             @Valid @RequestBody CreateIngestionTargetRequest body,
             HttpServletRequest request) {
-        guard.requireLocal(request);
+        guard.requireAdmin(request);
         IngestionTarget result = targetService.create(body);
         AdminBoardResponse response = boardResponse(result);
         audit.record(request, "BOARD_CREATED", "INGESTION_TARGET", result.getId(), null, response);
@@ -249,7 +249,7 @@ public class AdminController {
     public AdminBoardResponse setBoardEnabled(@PathVariable UUID id,
             @Valid @RequestBody SetBoardEnabledRequest body,
             HttpServletRequest request) {
-        guard.requireLocal(request);
+        guard.requireAdmin(request);
         AdminBoardResponse before = targets.findById(id).map(this::boardResponse).orElse(null);
         AdminBoardResponse result = boardResponse(targetService.setEnabled(id, body.enabled()));
         audit.record(request, "BOARD_ENABLED_CHANGED", "INGESTION_TARGET", id, before, result);
@@ -266,7 +266,7 @@ public class AdminController {
     public IngestionTargetResponse updateTarget(@PathVariable UUID id,
             @Valid @RequestBody UpdateAdminTargetRequest body,
             HttpServletRequest request) {
-        guard.requireLocal(request);
+        guard.requireAdmin(request);
         var before = targets.findById(id).map(IngestionTargetResponse::from).orElse(null);
         var result = IngestionTargetResponse.from(targetService.update(
                 id, body.enabled(), body.intervalMinutes()));
@@ -277,7 +277,7 @@ public class AdminController {
     @PostMapping("/ingestion-runs/{id}/retry")
     public IngestionRequestResponse retry(@PathVariable UUID id,
             HttpServletRequest request) {
-        guard.requireLocal(request);
+        guard.requireAdmin(request);
         IngestionRun run = runs.findById(id).orElseThrow(() ->
                 new EntityNotFoundException("Ingestion run not found: " + id));
         if (run.getStatus() != IngestionRunStatus.FAILED) {
@@ -296,7 +296,7 @@ public class AdminController {
     public IngestionTargetResponse approve(@PathVariable UUID id,
             @Valid @RequestBody ApproveDiscoveryRequest body,
             HttpServletRequest request) {
-        guard.requireLocal(request);
+        guard.requireAdmin(request);
         CompanySeed seed = seeds.findById(id).orElseThrow(() ->
                 new EntityNotFoundException("Discovery seed not found: " + id));
         IngestionTargetResponse response = targets.findBySourceAndSourceAccount(

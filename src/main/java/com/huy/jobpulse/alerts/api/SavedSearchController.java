@@ -3,6 +3,8 @@ package com.huy.jobpulse.alerts.api;
 import com.huy.jobpulse.alerts.application.SavedSearchService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -27,10 +29,11 @@ public class SavedSearchController {
 
     @PostMapping
     public ResponseEntity<SavedSearchResponse> create(
+            @AuthenticationPrincipal OidcUser user,
             @Valid @RequestBody CreateSavedSearchRequest request
     ) {
         SavedSearchResponse response = SavedSearchResponse.from(
-                service.create(request)
+                service.create(user.getSubject(), request)
         );
         return ResponseEntity.created(URI.create(
                 "/api/v1/saved-searches/" + response.id()
@@ -38,17 +41,18 @@ public class SavedSearchController {
     }
 
     @GetMapping
-    public List<SavedSearchResponse> findAll() {
-        return service.findAll().stream()
+    public List<SavedSearchResponse> findAll(@AuthenticationPrincipal OidcUser user) {
+        return service.findAll(user.getSubject()).stream()
                 .map(SavedSearchResponse::from)
                 .toList();
     }
 
     @PatchMapping("/{id}")
     public SavedSearchResponse update(
+            @AuthenticationPrincipal OidcUser user,
             @PathVariable UUID id,
             @Valid @RequestBody UpdateSavedSearchRequest request
     ) {
-        return SavedSearchResponse.from(service.update(id, request));
+        return SavedSearchResponse.from(service.update(user.getSubject(), id, request));
     }
 }

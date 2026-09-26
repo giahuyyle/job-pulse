@@ -18,6 +18,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 
 @SpringBootTest(properties = {
         "management.health.rabbit.enabled=false",
@@ -52,12 +53,16 @@ class ObservabilityEndpointsIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("UP"));
         mvc.perform(get("/actuator/prometheus"))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(get("/actuator/prometheus")
+                        .with(httpBasic("metrics", "local-monitor-only")))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString(
                         "jobpulse_outbox_unpublished{application=\"jobpulse\"}")))
                 .andExpect(content().string(containsString(
                         "jobpulse_search_duration_seconds_bucket")));
-        mvc.perform(get("/actuator/metrics"))
+        mvc.perform(get("/actuator/metrics")
+                        .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user("monitor").roles("ADMIN")))
                 .andExpect(status().isNotFound());
     }
 

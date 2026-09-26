@@ -8,7 +8,9 @@ import java.util.UUID;
 
 public interface JobAlertRepository extends JpaRepository<JobAlert, UUID> {
 
-    List<JobAlert> findAllByOrderByCreatedAtDescIdDesc();
+    List<JobAlert> findAllBySavedSearchIdInOrderByCreatedAtDescIdDesc(
+            List<UUID> savedSearchIds);
 
-    List<JobAlert> findAllByReadAtIsNullOrderByCreatedAtDescIdDesc();
+    List<JobAlert> findAllBySavedSearchIdInAndReadAtIsNullOrderByCreatedAtDescIdDesc(
+            List<UUID> savedSearchIds);
 }

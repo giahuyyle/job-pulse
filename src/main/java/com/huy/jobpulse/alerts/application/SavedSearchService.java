@@ -28,7 +28,7 @@ public class SavedSearchService {
     }
 
     @Transactional
-    public SavedSearch create(CreateSavedSearchRequest request) {
+    public SavedSearch create(String ownerSubject, CreateSavedSearchRequest request) {
         JobSearchFilters filters = new JobSearchFilters(
                 request.query(),
                 request.company(),
@@ -37,6 +37,7 @@ public class SavedSearchService {
                 request.location()
         );
         return repository.save(SavedSearch.create(
+                ownerSubject,
                 request.name(),
                 filters.query(),
                 filters.company(),
@@ -48,13 +49,13 @@ public class SavedSearchService {
     }
 
     @Transactional(readOnly = true)
-    public List<SavedSearch> findAll() {
-        return repository.findAllByOrderByCreatedAtDesc();
+    public List<SavedSearch> findAll(String ownerSubject) {
+        return repository.findAllByOwnerSubjectOrderByCreatedAtDesc(ownerSubject);
     }
 
     @Transactional
-    public SavedSearch update(UUID id, UpdateSavedSearchRequest request) {
-        SavedSearch search = repository.findById(id)
+    public SavedSearch update(String ownerSubject, UUID id, UpdateSavedSearchRequest request) {
+        SavedSearch search = repository.findByIdAndOwnerSubject(id, ownerSubject)
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Saved search not found: " + id
                 ));

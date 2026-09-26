@@ -8,6 +8,9 @@ rule_files:
 scrape_configs:
   - job_name: jobpulse
     metrics_path: /actuator/prometheus
+    basic_auth:
+      username: metrics
+      password: local-monitor-only
     static_configs:
       - targets:
           - host.docker.internal:8080

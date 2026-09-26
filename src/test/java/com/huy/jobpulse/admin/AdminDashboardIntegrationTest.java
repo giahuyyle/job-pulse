@@ -37,6 +37,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 
 @SpringBootTest(properties = {
         "jobpulse.admin.enabled=true",
@@ -84,7 +86,7 @@ class AdminDashboardIntegrationTest {
         failed.fail("provider unavailable", NOW.plusSeconds(50));
         runs.save(failed);
 
-        mvc.perform(get("/api/v1/admin/overview").with(request -> { request.setRemoteAddr("127.0.0.1"); return request; }))
+        mvc.perform(get("/api/v1/admin/overview").with(user("admin").roles("ADMIN")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalBoards").value(2))
                 .andExpect(jsonPath("$.activeBoards").value(1))
@@ -99,12 +101,15 @@ class AdminDashboardIntegrationTest {
     void boardCanBeDisabledAndManualIngestionCreatesOneRequest() throws Exception {
         var board = board("stripe", "Stripe");
         mvc.perform(patch("/api/v1/admin/boards/{id}/enabled", board.getId())
+                        .with(user("admin").roles("ADMIN"))
+                        .with(csrf())
                         .contentType("application/json").content("{\"enabled\":false}"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.enabled").value(false));
         assertThat(targets.findById(board.getId()).orElseThrow().isEnabled()).isFalse();
 
         targetService.setEnabled(board.getId(), true);
-        mvc.perform(post("/api/v1/admin/boards/{id}/ingestion", board.getId()))
+        mvc.perform(post("/api/v1/admin/boards/{id}/ingestion", board.getId())
+                        .with(user("admin").roles("ADMIN")).with(csrf()))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.ingestionTargetId").value(board.getId().toString()));
         assertThat(requests.count()).isOne();
     }
@@ -116,7 +121,8 @@ class AdminDashboardIntegrationTest {
         failed.fail("provider unavailable", NOW.plusSeconds(5));
         runs.save(failed);
 
-        mvc.perform(post("/api/v1/admin/ingestion-runs/{id}/retry", failed.getId()))
+        mvc.perform(post("/api/v1/admin/ingestion-runs/{id}/retry", failed.getId())
+                        .with(user("admin").roles("ADMIN")).with(csrf()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.retryOfRunId").value(failed.getId().toString()));
 
@@ -157,18 +163,19 @@ class AdminDashboardIntegrationTest {
             board("board-" + index, "Company " + index);
         }
 
-        mvc.perform(get("/api/v1/admin/boards").param("size", "100"))
+        mvc.perform(get("/api/v1/admin/boards").param("size", "100")
+                        .with(user("admin").roles("ADMIN")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalElements").value(50))
                 .andExpect(jsonPath("$.content.length()").value(50));
     }
 
     @Test
-    void adminEndpointsRejectNonLocalClients() throws Exception {
+    void adminEndpointsRejectNonAdministrators() throws Exception {
         mvc.perform(get("/api/v1/admin/overview").with(request -> {
                     request.setRemoteAddr("203.0.113.10");
                     return request;
-                }))
+                }).with(user("reader").roles("USER")))
                 .andExpect(status().isForbidden());
     }
 

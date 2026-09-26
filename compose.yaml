@@ -10,6 +10,10 @@ services:
       DATABASE_PASSWORD: jobpulse
       RABBITMQ_HOST: rabbitmq
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-local-unconfigured}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-local-unconfigured}
+      JOBPULSE_ADMIN_EMAILS: ${JOBPULSE_ADMIN_EMAILS:-}
+      JOBPULSE_ADMIN_ENABLED: ${JOBPULSE_ADMIN_ENABLED:-false}
       SPRING_PROFILES_ACTIVE: observability
       OTLP_TRACING_ENDPOINT: http://tempo:4318/v1/traces
     ports:

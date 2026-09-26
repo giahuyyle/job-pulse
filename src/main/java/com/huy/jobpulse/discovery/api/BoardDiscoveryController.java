@@ -22,12 +22,12 @@ public class BoardDiscoveryController {
 
     private final CompanySeedService seedService;
     private final BoardDiscoveryService discoveryService;
-    private final LocalAdminGuard localAdminGuard;
+    private final AdminGuard localAdminGuard;
 
     public BoardDiscoveryController(
             CompanySeedService seedService,
             BoardDiscoveryService discoveryService,
-            LocalAdminGuard localAdminGuard
+            AdminGuard localAdminGuard
     ) {
         this.seedService = seedService;
         this.discoveryService = discoveryService;
@@ -42,13 +42,13 @@ public class BoardDiscoveryController {
             @RequestBody String csv,
             HttpServletRequest request
     ) {
-        localAdminGuard.requireLocal(request);
+        localAdminGuard.requireAdmin(request);
         return seedService.importCsv(csv);
     }
 
     @GetMapping("/seeds")
     public List<CompanySeedResponse> listSeeds(HttpServletRequest request) {
-        localAdminGuard.requireLocal(request);
+        localAdminGuard.requireAdmin(request);
         return seedService.findAll().stream()
                 .map(CompanySeedResponse::from)
                 .toList();
@@ -56,7 +56,7 @@ public class BoardDiscoveryController {
 
     @PostMapping("/runs")
     public DiscoveryRunResult run(HttpServletRequest request) {
-        localAdminGuard.requireLocal(request);
+        localAdminGuard.requireAdmin(request);
         return discoveryService.runAll();
     }
 }

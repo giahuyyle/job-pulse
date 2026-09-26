@@ -5,9 +5,14 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.Optional;
 
 public interface SavedSearchRepository
         extends JpaRepository<SavedSearch, UUID> {
 
-    List<SavedSearch> findAllByOrderByCreatedAtDesc();
+    List<SavedSearch> findAllByOwnerSubjectOrderByCreatedAtDesc(String ownerSubject);
+
+    Optional<SavedSearch> findByIdAndOwnerSubject(UUID id, String ownerSubject);
+
+    boolean existsByIdAndOwnerSubject(UUID id, String ownerSubject);
 }

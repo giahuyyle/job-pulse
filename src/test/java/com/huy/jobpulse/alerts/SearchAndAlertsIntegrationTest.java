@@ -154,7 +154,7 @@ class SearchAndAlertsIntegrationTest {
                 "Remote"
         );
         clock.advance(Duration.ofMinutes(1));
-        SavedSearch search = savedSearchService.create(
+        SavedSearch search = savedSearchService.create("test-user",
                 new CreateSavedSearchRequest(
                         "Remote backend",
                         "backend engineer",
@@ -201,13 +201,13 @@ class SearchAndAlertsIntegrationTest {
         assertThat(alertRepository.count()).isOne();
         assertThat(dailyCount("CREATED")).isEqualTo(2);
 
-        var alert = alertService.findAll(true).getFirst();
-        alertService.markRead(alert.alert().getId());
-        assertThat(alertService.findAll(true)).isEmpty();
+        var alert = alertService.findAll("test-user", true).getFirst();
+        alertService.markRead("test-user", alert.alert().getId());
+        assertThat(alertService.findAll("test-user", true)).isEmpty();
 
         UpdateSavedSearchRequest disable = new UpdateSavedSearchRequest();
         disable.setEnabled(false);
-        savedSearchService.update(search.getId(), disable);
+        savedSearchService.update("test-user", search.getId(), disable);
         clock.advance(Duration.ofMinutes(1));
         ingest("alerts-board", List.of(
                 external(

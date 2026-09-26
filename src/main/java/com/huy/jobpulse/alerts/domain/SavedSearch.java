@@ -21,6 +21,9 @@ public class SavedSearch {
     @Id
     private UUID id;
 
+    @Column(name = "owner_subject", nullable = false, length = 255)
+    private String ownerSubject;
+
     @Column(nullable = false, length = 100)
     private String name;
 
@@ -56,6 +59,7 @@ public class SavedSearch {
 
     private SavedSearch(
             UUID id,
+            String ownerSubject,
             String name,
             String query,
             String company,
@@ -65,6 +69,7 @@ public class SavedSearch {
             Instant createdAt
     ) {
         this.id = id;
+        this.ownerSubject = Objects.requireNonNull(ownerSubject);
         this.name = requireName(name);
         apply(query, company, source, remotePolicy, location);
         this.enabled = true;
@@ -72,6 +77,7 @@ public class SavedSearch {
     }
 
     public static SavedSearch create(
+            String ownerSubject,
             String name,
             String query,
             String company,
@@ -82,6 +88,7 @@ public class SavedSearch {
     ) {
         return new SavedSearch(
                 UUID.randomUUID(),
+                ownerSubject,
                 name,
                 query,
                 company,
@@ -128,6 +135,7 @@ public class SavedSearch {
     }
 
     public UUID getId() { return id; }
+    public String getOwnerSubject() { return ownerSubject; }
     public String getName() { return name; }
     public String getQuery() { return query; }
     public String getCompany() { return company; }

@@ -3,6 +3,8 @@ package com.huy.jobpulse.admin.application;
 import com.huy.jobpulse.admin.domain.AdminAuditEntry;
 import com.huy.jobpulse.admin.infrastructure.AdminAuditRepository;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.ObjectMapper;
 
@@ -21,8 +23,7 @@ public class AdminAuditService {
 
     public UUID record(HttpServletRequest request, String action, String targetType,
             Object targetId, Object before, Object after) {
-        String actor = request.getHeader("X-Admin-Actor");
-        if (actor == null || actor.isBlank()) actor = "local-operator";
+        String actor = actor(request);
         UUID correlation = correlation(request);
         repository.save(AdminAuditEntry.create(actor.strip(), action, targetType,
                 String.valueOf(targetId), clock.instant(), json(before), json(after), correlation));
@@ -30,8 +31,12 @@ public class AdminAuditService {
     }
 
     public String actor(HttpServletRequest request) {
-        String actor = request.getHeader("X-Admin-Actor");
-        return actor == null || actor.isBlank() ? "local-operator" : actor.strip();
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "Authenticated administrator required");
+        }
+        return authentication.getName();
     }
 
     private UUID correlation(HttpServletRequest request) {
