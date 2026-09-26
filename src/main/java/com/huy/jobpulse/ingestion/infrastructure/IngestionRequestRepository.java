@@ -30,8 +30,8 @@ public interface IngestionRequestRepository
     Page<IngestionRequest> findAllByOrderByCreatedAtDesc(Pageable pageable);
 
     List<IngestionRequest>
-    findTop50ByPublishedAtIsNullAndStatusOrderByCreatedAtAsc(
-            IngestionRequestStatus status
+    findTop50ByPublishedAtIsNullAndStatusAndDispatchAfterLessThanEqualOrderByCreatedAtAsc(
+            IngestionRequestStatus status, Instant now
     );
 
     List<IngestionRequest>
@@ -62,15 +62,33 @@ public interface IngestionRequestRepository
                    attempt_count = attempt_count + 1,
                    last_error = NULL,
                    lease_until = :leaseUntil,
+                   lease_owner = :leaseOwner,
                    version = version + 1
              WHERE id = :id
                AND status = 'PENDING'
+               AND dispatch_after <= :startedAt
             """, nativeQuery = true)
     int claim(
             @Param("id") UUID id,
             @Param("startedAt") Instant startedAt,
-            @Param("leaseUntil") Instant leaseUntil
+            @Param("leaseUntil") Instant leaseUntil,
+            @Param("leaseOwner") UUID leaseOwner
     );
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = """
+            UPDATE ingestion_requests
+               SET lease_until = :leaseUntil,
+                   version = version + 1
+             WHERE id = :id
+               AND status = 'RUNNING'
+               AND lease_owner = :leaseOwner
+               AND lease_until > :now
+            """, nativeQuery = true)
+    int renewLease(@Param("id") UUID id,
+            @Param("leaseOwner") UUID leaseOwner,
+            @Param("now") Instant now,
+            @Param("leaseUntil") Instant leaseUntil);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(value = """
@@ -78,14 +96,20 @@ public interface IngestionRequestRepository
                SET status = 'SUCCEEDED',
                    finished_at = :finishedAt,
                    lease_until = NULL,
+                   lease_owner = NULL,
                    last_error = NULL,
                    version = version + 1
              WHERE id = :id
                AND status = 'RUNNING'
+               AND attempt_count = :attemptCount
+               AND lease_owner = :leaseOwner
+               AND lease_until > :finishedAt
             """, nativeQuery = true)
     int markSucceeded(
             @Param("id") UUID id,
-            @Param("finishedAt") Instant finishedAt
+            @Param("finishedAt") Instant finishedAt,
+            @Param("attemptCount") int attemptCount,
+            @Param("leaseOwner") UUID leaseOwner
     );
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
@@ -93,14 +117,24 @@ public interface IngestionRequestRepository
             UPDATE ingestion_requests
                SET status = 'PENDING',
                    lease_until = NULL,
+                   lease_owner = NULL,
+                   published_at = NULL,
+                   dispatch_after = :dispatchAfter,
                    last_error = :lastError,
                    version = version + 1
              WHERE id = :id
                AND status = 'RUNNING'
+               AND attempt_count = :attemptCount
+               AND lease_owner = :leaseOwner
+               AND lease_until > :now
             """, nativeQuery = true)
     int releaseForRetry(
             @Param("id") UUID id,
-            @Param("lastError") String lastError
+            @Param("lastError") String lastError,
+            @Param("attemptCount") int attemptCount,
+            @Param("dispatchAfter") Instant dispatchAfter,
+            @Param("leaseOwner") UUID leaseOwner,
+            @Param("now") Instant now
     );
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
@@ -109,16 +143,38 @@ public interface IngestionRequestRepository
                SET status = 'FAILED',
                    finished_at = :finishedAt,
                    lease_until = NULL,
+                   lease_owner = NULL,
                    last_error = :lastError,
                    version = version + 1
              WHERE id = :id
                AND status = 'RUNNING'
+               AND attempt_count = :attemptCount
+               AND lease_owner = :leaseOwner
+               AND lease_until > :finishedAt
             """, nativeQuery = true)
     int markFailed(
             @Param("id") UUID id,
             @Param("finishedAt") Instant finishedAt,
-            @Param("lastError") String lastError
+            @Param("lastError") String lastError,
+            @Param("attemptCount") int attemptCount,
+            @Param("leaseOwner") UUID leaseOwner
     );
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = """
+            UPDATE ingestion_requests
+               SET status = 'FAILED', finished_at = :now,
+                   lease_until = NULL, lease_owner = NULL,
+                   last_error = :lastError, version = version + 1
+             WHERE id = :id AND status = 'RUNNING'
+               AND attempt_count = :attemptCount
+               AND lease_owner = :leaseOwner
+               AND lease_until < :now
+            """, nativeQuery = true)
+    int markFailedExpired(@Param("id") UUID id, @Param("now") Instant now,
+            @Param("lastError") String lastError,
+            @Param("attemptCount") int attemptCount,
+            @Param("leaseOwner") UUID leaseOwner);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(value = """
@@ -126,6 +182,7 @@ public interface IngestionRequestRepository
                SET status = 'PENDING',
                    published_at = NULL,
                    lease_until = NULL,
+                   lease_owner = NULL,
                    last_error = :lastError,
                    version = version + 1
              WHERE id = :id
@@ -141,9 +198,31 @@ public interface IngestionRequestRepository
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(value = """
             UPDATE ingestion_requests
+               SET published_at = NULL, version = version + 1
+             WHERE status = 'PENDING'
+               AND published_at < :cutoff
+            """, nativeQuery = true)
+    int recoverStalePending(@Param("cutoff") Instant cutoff);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = """
+            UPDATE ingestion_requests
                SET status = 'CANCELLED', finished_at = :finishedAt,
                    last_error = 'Cancelled by administrator', version = version + 1
              WHERE id = :id AND status = 'PENDING'
             """, nativeQuery = true)
     int cancel(@Param("id") UUID id, @Param("finishedAt") Instant finishedAt);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = """
+            UPDATE ingestion_requests
+               SET status = 'PENDING', published_at = NULL,
+                   dispatch_after = :now, attempt_count = 0,
+                   started_at = NULL, finished_at = NULL,
+                   lease_until = NULL, last_error = NULL,
+                   lease_owner = NULL,
+                   version = version + 1
+             WHERE id = :id AND status = 'FAILED'
+            """, nativeQuery = true)
+    int reopenFailed(@Param("id") UUID id, @Param("now") Instant now);
 }

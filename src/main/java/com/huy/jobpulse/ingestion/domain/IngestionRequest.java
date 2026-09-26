@@ -32,6 +32,9 @@ public class IngestionRequest {
     @Column(name = "published_at")
     private Instant publishedAt;
 
+    @Column(name = "dispatch_after", nullable = false)
+    private Instant dispatchAfter;
+
     @Column(name = "started_at")
     private Instant startedAt;
 
@@ -46,6 +49,9 @@ public class IngestionRequest {
 
     @Column(name = "lease_until")
     private Instant leaseUntil;
+
+    @Column(name = "lease_owner")
+    private UUID leaseOwner;
 
     @Column(name = "correlation_id", nullable = false)
     private UUID correlationId;
@@ -74,6 +80,7 @@ public class IngestionRequest {
         this.ingestionTargetId = ingestionTargetId;
         this.status = IngestionRequestStatus.PENDING;
         this.createdAt = createdAt;
+        this.dispatchAfter = createdAt;
         this.correlationId = id;
     }
 
@@ -129,6 +136,8 @@ public class IngestionRequest {
         return publishedAt;
     }
 
+    public Instant getDispatchAfter() { return dispatchAfter; }
+
     public Instant getStartedAt() {
         return startedAt;
     }
@@ -148,6 +157,8 @@ public class IngestionRequest {
     public Instant getLeaseUntil() {
         return leaseUntil;
     }
+
+    public UUID getLeaseOwner() { return leaseOwner; }
 
     public UUID getCorrelationId() {
         return correlationId;

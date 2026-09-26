@@ -123,8 +123,8 @@ public class IngestionRequestService {
     @Transactional(readOnly = true)
     public List<UUID> findUnpublishedIds() {
         return requestRepository
-                .findTop50ByPublishedAtIsNullAndStatusOrderByCreatedAtAsc(
-                        IngestionRequestStatus.PENDING
+                .findTop50ByPublishedAtIsNullAndStatusAndDispatchAfterLessThanEqualOrderByCreatedAtAsc(
+                        IngestionRequestStatus.PENDING, clock.instant()
                 ).stream()
                 .map(IngestionRequest::getId)
                 .toList();
@@ -151,10 +151,12 @@ public class IngestionRequestService {
     @Transactional
     public Optional<IngestionWork> claim(UUID requestId) {
         Instant now = clock.instant();
+        UUID leaseOwner = UUID.randomUUID();
         if (requestRepository.claim(
                 requestId,
                 now,
-                now.plus(LEASE_DURATION)
+                now.plus(LEASE_DURATION),
+                leaseOwner
         ) == 0) {
             return Optional.empty();
         }
@@ -172,8 +174,16 @@ public class IngestionRequestService {
                 target.getSource(),
                 target.getSourceAccount(),
                 target.getCompany(),
-                request.getAttemptCount()
+                request.getAttemptCount(),
+                leaseOwner
         ));
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public boolean renewLease(IngestionWork work) {
+        Instant now = clock.instant();
+        return requestRepository.renewLease(work.requestId(), work.leaseOwner(),
+                now, now.plus(LEASE_DURATION)) == 1;
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -182,7 +192,8 @@ public class IngestionRequestService {
         Optional<IngestionTarget> target = targetRepository.findLockedById(
                 work.targetId()
         );
-        if (requestRepository.markSucceeded(work.requestId(), now) == 1
+        if (requestRepository.markSucceeded(work.requestId(), now,
+                work.attemptCount(), work.leaseOwner()) == 1
                 && target.isPresent()) {
             target.orElseThrow().markSucceeded(now);
         }
@@ -194,7 +205,11 @@ public class IngestionRequestService {
         if (work.attemptCount() < maxAttempts) {
             return requestRepository.releaseForRetry(
                     work.requestId(),
-                    message
+                    message,
+                    work.attemptCount(),
+                    clock.instant().plusSeconds(work.attemptCount() <= 1 ? 5 : 30),
+                    work.leaseOwner(),
+                    clock.instant()
             ) == 1;
         }
         Instant now = clock.instant();
@@ -204,7 +219,9 @@ public class IngestionRequestService {
         if (requestRepository.markFailed(
                 work.requestId(),
                 now,
-                message
+                message,
+                work.attemptCount(),
+                work.leaseOwner()
         ) == 1 && target.isPresent()) {
             target.orElseThrow().markFailed(now, message);
             deadLetters.save(IngestionDeadLetter.create(
@@ -230,14 +247,28 @@ public class IngestionRequestService {
 
     @Transactional
     public IngestionRequest replayDeadLetter(UUID id) {
-        IngestionDeadLetter dead = deadLetters.findById(id).orElseThrow(() ->
+        return replayDeadLetter(id, "local-operator", "Manual replay");
+    }
+
+    @Transactional
+    public IngestionRequest replayDeadLetter(UUID id, String actor, String reason) {
+        if (actor == null || actor.isBlank() || reason == null || reason.isBlank()) {
+            throw new IllegalArgumentException("Replay actor and reason are required");
+        }
+        IngestionDeadLetter dead = deadLetters.lockById(id).orElseThrow(() ->
                 new EntityNotFoundException("Dead letter not found: " + id));
         if (dead.getReplayedAt() != null) {
             throw new IllegalArgumentException("Dead letter has already been replayed");
         }
-        IngestionRequest replay = requestTarget(dead.getTargetId());
-        dead.replayed(clock.instant(), replay.getId());
-        return replay;
+        Instant now = clock.instant();
+        if (requestRepository.reopenFailed(dead.getRequestId(), now) != 1) {
+            throw new IllegalArgumentException("Only a failed request can be replayed");
+        }
+        dead.replayed(now, dead.getRequestId(), actor.strip(), reason.strip());
+        deadLetters.save(dead);
+        LOGGER.atWarn().addKeyValue("requestId", dead.getRequestId())
+                .addKeyValue("actor", actor.strip()).log("Dead letter replay requested");
+        return requestRepository.findById(dead.getRequestId()).orElseThrow();
     }
 
     @Transactional(readOnly = true)
@@ -258,10 +289,12 @@ public class IngestionRequestService {
             if (request.getAttemptCount() >= maxAttempts) {
                 Optional<IngestionTarget> target = targetRepository
                         .findLockedById(request.getIngestionTargetId());
-                if (requestRepository.markFailed(
+                if (requestRepository.markFailedExpired(
                         request.getId(),
                         now,
-                        "Worker lease expired after maximum attempts"
+                        "Worker lease expired after maximum attempts",
+                        request.getAttemptCount(),
+                        request.getLeaseOwner()
                 ) == 1 && target.isPresent()) {
                     target.orElseThrow().markFailed(
                             now,
@@ -271,6 +304,8 @@ public class IngestionRequestService {
                             request.getId(), request.getIngestionTargetId(), now,
                             "Worker lease expired after maximum attempts"));
                     metrics.recordDeadLetter("ingestion");
+                    metrics.recordLeaseReclaimed("exhausted");
+                    recovered++;
                 }
             } else {
                 recovered += requestRepository.recoverExpired(
@@ -278,9 +313,20 @@ public class IngestionRequestService {
                         now,
                         "Worker lease expired; request rescheduled"
                 );
+                metrics.recordLeaseReclaimed("rescheduled");
             }
         }
-        return recovered;
+        if (recovered > 0) {
+            LOGGER.atWarn().addKeyValue("reclaimed", recovered)
+                    .log("Expired ingestion leases reclaimed");
+        }
+        int stalePending = requestRepository.recoverStalePending(now.minus(Duration.ofMinutes(5)));
+        if (stalePending > 0) {
+            LOGGER.atWarn().addKeyValue("requests", stalePending)
+                    .log("Stale pending ingestion deliveries rescheduled");
+            for (int i = 0; i < stalePending; i++) metrics.recordRabbitRedelivery("recovered");
+        }
+        return recovered + stalePending;
     }
 
     private IngestionRequest createOrGetOutstanding(UUID targetId, Instant now) {

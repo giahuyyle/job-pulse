@@ -10,6 +10,7 @@ public record IngestionWork(
         JobSource source,
         String sourceAccount,
         String company,
-        int attemptCount
+        int attemptCount,
+        UUID leaseOwner
 ) {
 }
