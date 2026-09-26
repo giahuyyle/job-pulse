@@ -17,6 +17,10 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 @Component
 public class SafeCareersPageFetcher implements CareersPageFetcher {
@@ -68,7 +72,7 @@ public class SafeCareersPageFetcher implements CareersPageFetcher {
                                     + response.statusCode()
                     );
                 }
-                byte[] bytes = body.readNBytes(MAX_RESPONSE_BYTES + 1);
+                byte[] bytes = readBody(body);
                 if (bytes.length > MAX_RESPONSE_BYTES) {
                     throw new DiscoveryFetchException(
                             "Careers page exceeded 1000000-byte limit"
@@ -86,6 +90,25 @@ public class SafeCareersPageFetcher implements CareersPageFetcher {
             }
         }
         throw new DiscoveryFetchException("Careers page redirect failed");
+    }
+
+    private static byte[] readBody(InputStream body) {
+        FutureTask<byte[]> read = new FutureTask<>(
+                () -> body.readNBytes(MAX_RESPONSE_BYTES + 1));
+        Thread.ofVirtual().start(read);
+        try {
+            return read.get(10, TimeUnit.SECONDS);
+        } catch (TimeoutException timeout) {
+            read.cancel(true);
+            try { body.close(); } catch (IOException ignored) { }
+            throw new DiscoveryFetchException("Careers page body timed out", timeout);
+        } catch (InterruptedException interrupted) {
+            read.cancel(true);
+            Thread.currentThread().interrupt();
+            throw new DiscoveryFetchException("Careers page read was interrupted", interrupted);
+        } catch (ExecutionException failed) {
+            throw new DiscoveryFetchException("Could not read careers page", failed.getCause());
+        }
     }
 
     private HttpResponse<InputStream> send(URI uri) {
