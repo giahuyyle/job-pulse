@@ -2,6 +2,9 @@ spring:
   application:
     name: jobpulse
 
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
   datasource:
     url: ${DATABASE_URL:jdbc:postgresql://localhost:5433/jobpulse}
     username: ${DATABASE_USER:jobpulse}
