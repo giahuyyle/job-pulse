@@ -125,7 +125,7 @@ if ! gcloud compute disks describe "$VM_NAME" --zone "$GCP_ZONE" \
     --project "$project" --format='value(resourcePolicies)' | \
     grep -q jobpulse-daily; then
   gcloud compute disks add-resource-policies "$VM_NAME" \
-    --resource-policies=jobpulse-daily --region "$GCP_REGION" --zone "$GCP_ZONE" \
+    --resource-policies=jobpulse-daily --zone "$GCP_ZONE" \
     --project "$project"
 fi
 
