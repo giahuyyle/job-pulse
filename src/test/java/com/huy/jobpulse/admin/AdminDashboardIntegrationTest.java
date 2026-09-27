@@ -48,7 +48,8 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 @AutoConfigureMockMvc
 @Testcontainers
 class AdminDashboardIntegrationTest {
-    private static final Instant NOW = Instant.now().minusSeconds(60);
+    private static final Instant NOW = Instant.now().minusSeconds(60)
+            .truncatedTo(java.time.temporal.ChronoUnit.MICROS);
 
     @Container @ServiceConnection
     static PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:16");
