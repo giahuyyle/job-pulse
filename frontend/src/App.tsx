@@ -29,9 +29,8 @@ export default function App() {
     <a className="skip-link" href="#main-content">Skip to content</a>
     <header className="site-header sticky top-0 z-40 border-b border-black/8 bg-canvas/90 backdrop-blur-xl">
       <div className="mx-auto flex h-18 max-w-[1440px] items-center justify-between px-5 lg:px-10">
-        <NavLink to="/jobs" className="flex items-center gap-2.5" onClick={()=>setOpen(false)} aria-label="JobPulse home">
-          <span className="brand-mark" aria-hidden="true">j<span>.</span></span>
-          <span className="font-display text-lg font-extrabold tracking-[-.04em]">jobpulse</span>
+        <NavLink to="/jobs" className="brand-link" onClick={()=>setOpen(false)} aria-label="jobpulse home">
+          <img className="site-logo" src="/logo.png" alt="" width="180" height="60" />
         </NavLink>
         <nav className="desktop-nav hidden items-center gap-1 md:flex" aria-label="Main navigation">
           {links.map(({to,label,icon:Icon})=><NavLink key={to} to={to} className={({isActive})=>`flex items-center gap-2 px-4 py-2 text-sm font-bold ${isActive?'active':'text-ink/55 hover:text-ink'}`}><Icon size={15}/>{label}</NavLink>)}

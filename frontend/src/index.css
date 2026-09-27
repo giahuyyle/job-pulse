@@ -35,8 +35,8 @@
 .skip-link { position: fixed; z-index: 100; top: 8px; left: 8px; padding: 10px 14px; border-radius: 6px; background: #183f32; color: white; transform: translateY(-150%); }
 .skip-link:focus { transform: translateY(0); }
 .site-header { background: rgba(246,247,242,.96); }
-.brand-mark { display: grid; place-items: center; width: 34px; height: 34px; padding-right: 4px; border-radius: 7px; background: #183f32; color: white; font-size: 22px; font-weight: 800; line-height: 1; letter-spacing: -.12em; }
-.brand-mark span { color: #d7ed8d; }
+.brand-link { display: inline-flex; align-items: center; flex: 0 0 auto; }
+.site-logo { display: block; width: 180px; height: 60px; object-fit: contain; }
 .desktop-nav a { border-bottom: 2px solid transparent; }
 .desktop-nav a.active { border-color: #183f32; color: #183f32; }
 .menu-button { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 6px; }
@@ -185,6 +185,7 @@
   .alerts-hero-icon { display: none; }
 }
 @media (max-width: 620px) {
+  .site-logo { width: 158px; height: 53px; }
   .jobs-page, .alerts-page, .admin-page { padding-top: 21px; }
   .jobs-intro { display: block; padding: 4px 0 21px; }
   .jobs-intro h1 { max-width: 12ch; margin-top: 8px; font-size: clamp(42px,11vw,55px); }
