@@ -25,13 +25,13 @@ export default function AdminPage(){
   if(query.isLoading)return <Shell><Loading label="Reading operational state"/></Shell>
   if(query.error||!query.data)return <Shell><Failure message={query.error instanceof Error?query.error.message:'Request failed'} retry={()=>void query.refetch()}/></Shell>
   const d=query.data
-  return <div className="mx-auto max-w-[1500px] px-5 py-8 lg:px-10 lg:py-12">
-    <header className="flex flex-col justify-between gap-5 lg:flex-row lg:items-end"><div><div className="flex items-center gap-2"><p className="eyebrow">Administrator</p><Pill tone="warn">Admin role required</Pill></div><h1 className="mt-2 font-display text-4xl font-extrabold tracking-[-.05em]">Operations console</h1><p className="mt-2 text-sm text-black/48">Operate boards, recover failures, inspect events, and audit every mutation.</p></div><button className="btn-secondary" onClick={()=>void query.refetch()}><RefreshCw size={15}/>Refresh</button></header>
+  return <div className="admin-page mx-auto max-w-[1500px] px-5 py-8 lg:px-10 lg:py-12">
+    <header className="admin-header flex flex-col justify-between gap-5 lg:flex-row lg:items-end"><div><div className="flex items-center gap-2"><p className="eyebrow">Admin</p><Pill tone="warn">Admin role required</Pill></div><h1 className="mt-2 font-display text-4xl font-extrabold tracking-[-.05em]">Operations</h1><p className="mt-2 text-sm text-black/48">Manage sources, runs, events, and audit logs.</p></div><button className="btn-secondary" onClick={()=>void query.refetch()}><RefreshCw size={15}/>Refresh</button></header>
     {message&&<div className="mt-5 flex items-center justify-between rounded-xl border border-pine/15 bg-mint/20 px-4 py-3 text-sm font-semibold text-pine"><span>{message}</span><button onClick={()=>setMessage('')}>×</button></div>}
-    <nav className="mt-7 flex gap-1 overflow-x-auto rounded-2xl border border-black/8 bg-white p-1.5">{views.map(v=><button key={v} onClick={()=>setView(v)} className={`whitespace-nowrap rounded-xl px-4 py-2 text-sm font-bold capitalize ${view===v?'bg-pine text-white':'text-black/45 hover:bg-black/4 hover:text-ink'}`}>{v}</button>)}</nav>
-    <main className={`mt-7 ${mutation.isPending?'pointer-events-none opacity-60':''}`}>
+    <nav aria-label="Operations sections" className="admin-tabs mt-7 flex gap-1 overflow-x-auto rounded-2xl border border-black/8 bg-white p-1.5">{views.map(v=><button key={v} onClick={()=>setView(v)} aria-pressed={view===v} className={`whitespace-nowrap rounded-xl px-4 py-2 text-sm font-bold capitalize ${view===v?'bg-pine text-white':'text-black/45 hover:bg-black/4 hover:text-ink'}`}>{v}</button>)}</nav>
+    <div className={`mt-7 ${mutation.isPending?'pointer-events-none opacity-60':''}`}>
       {view==='overview'&&<Overview d={d}/>} {view==='boards'&&<Boards targets={d.targets} busy={mutation.isPending} act={act}/>} {view==='runs'&&<Runs runs={d.runs} act={act}/>} {view==='queues'&&<Queues requests={d.requests} dead={d.deadLetters} act={act}/>} {view==='events'&&<Events events={d.events} act={act}/>} {view==='jobs'&&<Jobs jobs={d.jobs} selected={selected} select={async id=>setSelected(await api<AdminJob>(`/api/v1/admin/jobs/${id}`))} close={id=>act(`/api/v1/admin/jobs/${id}/close`)} reprocess={id=>act(`/api/v1/admin/jobs/${id}/reprocess`)}/>} {view==='discovery'&&<DiscoveryReview items={d.discovery} act={act}/>} {view==='audit'&&<Audit entries={d.audit}/>}
-    </main>
+    </div>
     {pending&&<ConfirmDialog
       confirmation={pending.confirmation}
       busy={mutation.isPending}
