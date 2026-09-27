@@ -1,0 +1,15 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - /etc/prometheus/alerts.yml
+
+scrape_configs:
+  - job_name: jobpulse
+    metrics_path: /actuator/prometheus
+    basic_auth:
+      username: metrics
+      password_file: /etc/prometheus/monitor-password
+    static_configs:
+      - targets: [app:8080]

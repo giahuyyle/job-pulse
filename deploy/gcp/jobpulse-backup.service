@@ -1,0 +1,8 @@
+[Unit]
+Description=Back up JobPulse PostgreSQL to Cloud Storage
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/jobpulse/backup-postgres.sh

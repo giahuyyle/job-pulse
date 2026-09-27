@@ -12,5 +12,7 @@ FROM eclipse-temurin:21-jre
 
 WORKDIR /app
 COPY --from=build /workspace/target/jobpulse-*.jar app.jar
+RUN useradd --uid 10001 --no-create-home --shell /usr/sbin/nologin jobpulse
+USER jobpulse
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "app.jar"]

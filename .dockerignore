@@ -2,3 +2,10 @@
 .idea
 target
 *.iml
+frontend
+docs
+deploy
+observability
+benchmarks
+.env*
+gha-creds-*.json
