@@ -28,4 +28,4 @@ The local Compose Prometheus config uses the development-only `metrics` / `local
 
 Migration V17 assigns pre-existing saved searches the owner `legacy-local` and disables them. They remain in the database but are not exposed to Google users or generating new alerts. After confirming the intended owner, an operator can update those rows to that account's `sub` shown by `/api/v1/auth/session` and re-enable them; do not assign them by email.
 
-This milestone covers application authentication and authorization. The public release still requires Milestone 14's network controls, TLS, secrets, deployment automation, backups, and production verification.
+Application authentication and authorization are implemented. The network, TLS, secrets, and backup setup for a public release is in [the Google Cloud deployment guide](google-cloud-deployment.md); its first live run and production verification remain pending.

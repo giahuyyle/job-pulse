@@ -23,7 +23,7 @@ Open [http://localhost:5173/jobs](http://localhost:5173/jobs). Vite proxies API 
 
 To use the operations console, configure a Google OAuth web client and set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `JOBPULSE_ADMIN_EMAILS`, and `JOBPULSE_ADMIN_ENABLED=true`. Admin controllers are disabled by default and require an authenticated admin role when enabled. See [docs/security.md](docs/security.md) for setup, route access, and the CSRF/session model.
 
-The delivery sequence and remaining deployment work are tracked in [docs/roadmap.md](docs/roadmap.md). Public deployment still requires the network, secret, backup, and release controls in Milestone 14.
+The delivery sequence is tracked in [docs/roadmap.md](docs/roadmap.md). The prepared Google Cloud release path, account setup, secrets, costs, and verification steps are in [docs/google-cloud-deployment.md](docs/google-cloud-deployment.md).
 
 Operational metrics, alerts, dashboards, structured logging, tracing, and controlled failure drills are documented in [docs/observability.md](docs/observability.md).
 Provider, broker, worker, and outbox recovery procedures are in [docs/runbooks/failure-recovery.md](docs/runbooks/failure-recovery.md), with isolated drill results in [docs/evidence/milestone-12/](docs/evidence/milestone-12/).

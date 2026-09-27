@@ -1,6 +1,6 @@
 # JobPulse delivery roadmap
 
-The operations dashboard and Google sign-in are implemented locally. Public deployment waits for network isolation, secrets, backups, and release controls.
+The operations dashboard and Google sign-in are implemented locally. A Google Cloud deployment path is prepared; the first live release requires a project, domain, credentials, and production verification.
 
 ## Milestone 10 — Admin operations dashboard
 
@@ -19,7 +19,7 @@ Status: implemented locally.
 11. Metrics, logs, Prometheus, Grafana, and Tempo — implemented locally
 12. Resilience and failure recovery — implemented locally
 13. Authentication, RBAC, and API security — implemented locally
-14. CI/CD and Google Cloud deployment
+14. CI/CD and Google Cloud deployment — implementation prepared; live deployment pending account setup
 15. Production verification and documentation
 
-Do not deploy publicly before Milestone 14 verifies TLS, proxy routing, private infrastructure, secrets, and backups.
+Before directing public traffic to JobPulse, verify TLS, proxy routing, private infrastructure, secrets, and backups using the [Google Cloud deployment guide](google-cloud-deployment.md).
