@@ -39,3 +39,4 @@ frontend/*.tsbuildinfo
 __pycache__/
 *.py[cod]
 .env
+gha-creds-*.json

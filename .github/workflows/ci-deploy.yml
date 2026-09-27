@@ -1,0 +1,150 @@
+name: CI and deploy
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - run: ./mvnw -B verify
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+
+  deploy:
+    needs: [backend, frontend]
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      github.ref == 'refs/heads/main' &&
+      vars.GCP_PROJECT_ID != '' &&
+      vars.GCP_REGION != '' &&
+      vars.GCP_ZONE != '' &&
+      vars.GCP_DOMAIN != '' &&
+      vars.GCP_VM_NAME != '' &&
+      vars.GCP_WORKLOAD_IDENTITY_PROVIDER != '' &&
+      vars.GCP_DEPLOY_SERVICE_ACCOUNT != ''
+    runs-on: ubuntu-latest
+    environment: production
+    concurrency:
+      group: jobpulse-production
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      PROJECT: ${{ vars.GCP_PROJECT_ID }}
+      REGION: ${{ vars.GCP_REGION }}
+      ZONE: ${{ vars.GCP_ZONE }}
+      DOMAIN: ${{ vars.GCP_DOMAIN }}
+      VM: ${{ vars.GCP_VM_NAME }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build release images
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker build -t jobpulse-app:release .
+          docker build -t jobpulse-frontend:release ./frontend
+      - uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v3
+      - name: Validate deployment values
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$PROJECT" =~ ^[a-z][a-z0-9-]{4,28}[a-z0-9]$ ]]
+          [[ "$REGION" =~ ^[a-z]+-[a-z]+[0-9]+$ ]]
+          [[ "$ZONE" == "$REGION"-* ]]
+          [[ "$DOMAIN" =~ ^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]
+          [[ "$VM" =~ ^[a-z][a-z0-9-]*$ ]]
+      - name: Publish immutable images
+        shell: bash
+        run: |
+          set -euo pipefail
+          registry="${REGION}-docker.pkg.dev"
+          tag="sha-${GITHUB_SHA}"
+          app_image="$registry/$PROJECT/jobpulse/jobpulse-app:$tag"
+          frontend_image="$registry/$PROJECT/jobpulse/jobpulse-frontend:$tag"
+          gcloud auth configure-docker "$registry" --quiet
+          docker tag jobpulse-app:release "$app_image"
+          docker tag jobpulse-frontend:release "$frontend_image"
+          app_push=$(docker push "$app_image")
+          frontend_push=$(docker push "$frontend_image")
+          app_digest=$(sed -nE 's/.*digest: (sha256:[a-f0-9]{64}).*/\1/p' <<< "$app_push" | tail -1)
+          frontend_digest=$(sed -nE 's/.*digest: (sha256:[a-f0-9]{64}).*/\1/p' <<< "$frontend_push" | tail -1)
+          [[ -n "$app_digest" && -n "$frontend_digest" ]]
+          echo "APP_IMAGE=${app_image%:*}@$app_digest" >> "$GITHUB_ENV"
+          echo "FRONTEND_IMAGE=${frontend_image%:*}@$frontend_digest" >> "$GITHUB_ENV"
+      - uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+      - name: Deploy over IAP
+        shell: bash
+        run: |
+          set -euo pipefail
+          release_dir="$RUNNER_TEMP/jobpulse-release"
+          mkdir -p "$release_dir/grafana"
+          cp deploy/gcp/compose.prod.yaml deploy/gcp/prometheus.prod.yml \
+            deploy/gcp/deploy-host.sh deploy/gcp/backup-postgres.sh \
+            deploy/gcp/jobpulse-backup.service deploy/gcp/jobpulse-backup.timer \
+            "$release_dir/"
+          cp observability/prometheus/alerts.yml "$release_dir/"
+          cp observability/tempo/tempo.yml "$release_dir/"
+          cp -a observability/grafana/provisioning \
+            observability/grafana/dashboards "$release_dir/grafana/"
+          jq -n --arg project "$PROJECT" --arg domain "$DOMAIN" \
+            --arg commit "$GITHUB_SHA" \
+            --arg appImage "$APP_IMAGE" --arg frontendImage "$FRONTEND_IMAGE" \
+            '{project:$project,domain:$domain,commit:$commit,appImage:$appImage,frontendImage:$frontendImage}' \
+            > "$release_dir/release.json"
+          gcloud compute scp --recurse "$release_dir" "$VM:~/" \
+            --project "$PROJECT" --zone "$ZONE" --tunnel-through-iap --quiet
+          gcloud compute ssh "$VM" --project "$PROJECT" --zone "$ZONE" \
+            --tunnel-through-iap --quiet \
+            --command='sudo bash "$HOME/jobpulse-release/deploy-host.sh" "$HOME/jobpulse-release"'
+      - name: Verify public HTTPS route
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in {1..12}; do
+            if curl --fail --silent --show-error --max-time 10 \
+              "https://$DOMAIN/api/v1/auth/session" \
+              | jq -e '.authenticated == false' >/dev/null; then
+              exit 0
+            fi
+            sleep 10
+          done
+          echo 'Public HTTPS verification failed' >&2
+          exit 1
