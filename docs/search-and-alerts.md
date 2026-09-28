@@ -54,3 +54,12 @@ PATCH /api/v1/alerts/{id}/read
 
 Alerts consume `jobpulse.job-events.v1` independently from analytics. See
 `docs/kafka-job-events.md` for delivery and local runtime details.
+
+## Daily email digest
+
+Opt in per saved search to receive one combined email at **9 AM Eastern Time**.
+Emails use the verified Google sign-in address, include read and unread new
+matches, and deduplicate jobs across searches. Existing searches start with
+email off. `emailEnabled` is accepted on creation and update;
+`GET /api/v1/email-settings` reports the schedule and availability. See
+[email-alerts.md](email-alerts.md) for Resend setup, quotas, unsubscribe, and recovery.
