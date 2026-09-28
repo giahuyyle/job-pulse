@@ -50,6 +50,19 @@ public class SavedSearch {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
+    @Column(name = "email_enabled", nullable = false)
+    private boolean emailEnabled;
+
+    @Column(name = "email_enabled_at")
+    private Instant emailEnabledAt;
+
+    public boolean isEmailEnabled() { return emailEnabled; }
+    public void setEmailEnabled(boolean enabled, Instant now) {
+        if (enabled && !this.emailEnabled) this.emailEnabledAt = Objects.requireNonNull(now);
+        if (!enabled) this.emailEnabledAt = null;
+        this.emailEnabled = enabled;
+    }
+
     @Version
     private long version;
 

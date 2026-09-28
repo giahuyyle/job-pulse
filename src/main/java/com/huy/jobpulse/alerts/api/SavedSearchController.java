@@ -33,11 +33,15 @@ public class SavedSearchController {
             @Valid @RequestBody CreateSavedSearchRequest request
     ) {
         SavedSearchResponse response = SavedSearchResponse.from(
-                service.create(user.getSubject(), request)
+                service.create(user.getSubject(), verifiedEmail(user), request)
         );
         return ResponseEntity.created(URI.create(
                 "/api/v1/saved-searches/" + response.id()
         )).body(response);
+    }
+
+    private static String verifiedEmail(OidcUser user) {
+        return Boolean.TRUE.equals(user.getEmailVerified()) ? user.getEmail() : null;
     }
 
     @GetMapping
@@ -53,6 +57,6 @@ public class SavedSearchController {
             @PathVariable UUID id,
             @Valid @RequestBody UpdateSavedSearchRequest request
     ) {
-        return SavedSearchResponse.from(service.update(user.getSubject(), id, request));
+        return SavedSearchResponse.from(service.update(user.getSubject(), verifiedEmail(user), id, request));
     }
 }

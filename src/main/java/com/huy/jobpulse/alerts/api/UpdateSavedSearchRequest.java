@@ -22,6 +22,8 @@ public class UpdateSavedSearchRequest {
     private String location;
 
     private Boolean enabled;
+    private Boolean emailEnabled;
+    private boolean emailEnabledPresent;
 
     private boolean namePresent;
     private boolean queryPresent;
@@ -77,6 +79,13 @@ public class UpdateSavedSearchRequest {
     public void setLocation(String location) {
         this.location = location;
         this.locationPresent = true;
+    }
+
+    public Boolean emailEnabled() { return emailEnabled; }
+    public boolean emailEnabledPresent() { return emailEnabledPresent; }
+    public void setEmailEnabled(Boolean emailEnabled) {
+        this.emailEnabled = emailEnabled;
+        this.emailEnabledPresent = true;
     }
 
     public void setEnabled(Boolean enabled) {

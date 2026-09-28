@@ -18,17 +18,27 @@ public class SavedSearchService {
 
     private final SavedSearchRepository repository;
     private final Clock clock;
+    private final com.huy.jobpulse.email.EmailPreferences email;
 
     public SavedSearchService(
             SavedSearchRepository repository,
-            Clock clock
+            Clock clock,
+            com.huy.jobpulse.email.EmailPreferences email
     ) {
         this.repository = repository;
         this.clock = clock;
+        this.email = email;
     }
 
     @Transactional
     public SavedSearch create(String ownerSubject, CreateSavedSearchRequest request) {
+        return create(ownerSubject, null, request);
+    }
+
+    @Transactional
+    public SavedSearch create(String ownerSubject, String verifiedEmail, CreateSavedSearchRequest request) {
+        boolean emailEnabled = Boolean.TRUE.equals(request.emailEnabled());
+        if (emailEnabled) email.optIn(ownerSubject, verifiedEmail);
         JobSearchFilters filters = new JobSearchFilters(
                 request.query(),
                 request.company(),
@@ -36,7 +46,7 @@ public class SavedSearchService {
                 request.remotePolicy(),
                 request.location()
         );
-        return repository.save(SavedSearch.create(
+        SavedSearch search = SavedSearch.create(
                 ownerSubject,
                 request.name(),
                 filters.query(),
@@ -45,7 +55,9 @@ public class SavedSearchService {
                 filters.remotePolicy(),
                 filters.location(),
                 clock.instant()
-        ));
+        );
+        search.setEmailEnabled(emailEnabled, clock.instant());
+        return repository.save(search);
     }
 
     @Transactional(readOnly = true)
@@ -55,10 +67,19 @@ public class SavedSearchService {
 
     @Transactional
     public SavedSearch update(String ownerSubject, UUID id, UpdateSavedSearchRequest request) {
+        return update(ownerSubject, null, id, request);
+    }
+
+    @Transactional
+    public SavedSearch update(String ownerSubject, String verifiedEmail, UUID id, UpdateSavedSearchRequest request) {
         SavedSearch search = repository.findByIdAndOwnerSubject(id, ownerSubject)
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Saved search not found: " + id
                 ));
+        if (request.emailEnabledPresent() && request.emailEnabled() == null)
+            throw new IllegalArgumentException("emailEnabled must not be null when provided");
+        if (Boolean.TRUE.equals(request.emailEnabled())) email.optIn(ownerSubject, verifiedEmail);
+        if (request.emailEnabledPresent()) search.setEmailEnabled(request.emailEnabled(), clock.instant());
         if (request.namePresent()) {
             search.rename(request.name());
         }
@@ -94,6 +115,8 @@ public class SavedSearchService {
             }
             search.setEnabled(request.enabled());
         }
+        repository.flush();
+        email.searchChanged(ownerSubject, id, !search.isEnabled() || !search.isEmailEnabled());
         return search;
     }
 }

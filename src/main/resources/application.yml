@@ -57,6 +57,16 @@ spring:
       ack-mode: record
 
 jobpulse:
+  email:
+    enabled: ${JOBPULSE_EMAIL_ENABLED:false}
+    api-key: ${RESEND_API_KEY:}
+    webhook-secret: ${RESEND_WEBHOOK_SECRET:}
+    from: ${JOBPULSE_EMAIL_FROM:}
+    app-url: ${JOBPULSE_APP_URL:http://localhost:5173}
+    api-url: ${RESEND_API_URL:https://api.resend.com}
+    daily-limit: ${JOBPULSE_EMAIL_DAILY_LIMIT:100}
+    monthly-limit: ${JOBPULSE_EMAIL_MONTHLY_LIMIT:3000}
+    allowlist: ${JOBPULSE_EMAIL_ALLOWLIST:}
   admin:
     enabled: ${JOBPULSE_ADMIN_ENABLED:false}
   security:

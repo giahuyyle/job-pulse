@@ -16,6 +16,7 @@ public record SavedSearchResponse(
         RemotePolicy remotePolicy,
         String location,
         boolean enabled,
+        boolean emailEnabled,
         Instant createdAt
 ) {
     public static SavedSearchResponse from(SavedSearch search) {
@@ -28,6 +29,7 @@ public record SavedSearchResponse(
                 search.getRemotePolicy(),
                 search.getLocation(),
                 search.isEnabled(),
+                search.isEmailEnabled(),
                 search.getCreatedAt()
         );
     }

@@ -11,6 +11,11 @@ public record CreateSavedSearchRequest(
         @Size(max = 255) String company,
         JobSource source,
         RemotePolicy remotePolicy,
-        @Size(max = 500) String location
+        @Size(max = 500) String location,
+        Boolean emailEnabled
 ) {
+    public CreateSavedSearchRequest(String name, String query, String company,
+            JobSource source, RemotePolicy remotePolicy, String location) {
+        this(name, query, company, source, remotePolicy, location, false);
+    }
 }

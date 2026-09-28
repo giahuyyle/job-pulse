@@ -69,15 +69,23 @@ public class AlertEventHandler {
         for (UUID searchId : matchingSearches(event)) {
             jdbc.update(
                     """
-                    INSERT INTO job_alerts (
+                    WITH inserted AS (INSERT INTO job_alerts (
                         id, saved_search_id, job_posting_id, created_at,
                         read_at, version
                     ) VALUES (
                         :id, :searchId, :jobPostingId, :createdAt, NULL, 0
                     )
                     ON CONFLICT (saved_search_id, job_posting_id) DO NOTHING
+                    RETURNING id, saved_search_id, created_at)
+                    INSERT INTO email_candidates(alert_id, owner_subject, created_at)
+                    SELECT i.id, s.owner_subject, i.created_at
+                    FROM inserted i JOIN saved_searches s ON s.id = i.saved_search_id
+                    JOIN email_settings e ON e.owner_subject = s.owner_subject
+                    WHERE s.email_enabled AND s.email_enabled_at < :eventOccurredAt AND e.suppression IS NULL
+                    ON CONFLICT DO NOTHING
                     """,
                     new MapSqlParameterSource()
+                            .addValue("eventOccurredAt", event.occurredAt().atOffset(ZoneOffset.UTC), Types.TIMESTAMP_WITH_TIMEZONE)
                             .addValue("id", UUID.randomUUID(), Types.OTHER)
                             .addValue("searchId", searchId, Types.OTHER)
                             .addValue("jobPostingId", event.jobId(), Types.OTHER)

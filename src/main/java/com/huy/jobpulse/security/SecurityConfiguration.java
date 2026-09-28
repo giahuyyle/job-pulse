@@ -51,6 +51,9 @@ public class SecurityConfiguration {
     SecurityFilterChain securityFilterChain(HttpSecurity http,
             OAuth2UserService<OidcUserRequest, OidcUser> oidcUsers) throws Exception {
         http.authorizeHttpRequests(authorize -> authorize
+                .requestMatchers(HttpMethod.POST, "/api/v1/webhooks/resend", "/api/v1/email/unsubscribe").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v1/email/unsubscribe", "/email/unsubscribe").permitAll()
+                .requestMatchers("/api/v1/email-settings").authenticated()
                 .requestMatchers("/api/v1/auth/session", "/api/v1/auth/csrf").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/jobs", "/api/v1/jobs/*",
                         "/api/v1/analytics/jobs/**").permitAll()
@@ -68,7 +71,9 @@ public class SecurityConfiguration {
         http.oauth2Login(oauth -> oauth
                 .userInfoEndpoint(userInfo -> userInfo.oidcUserService(oidcUsers))
                 .defaultSuccessUrl("/jobs", true));
-        http.csrf(Customizer.withDefaults());
+        http.csrf(csrf -> csrf.ignoringRequestMatchers(request ->
+                "POST".equals(request.getMethod()) && ("/api/v1/webhooks/resend".equals(request.getRequestURI())
+                        || "/api/v1/email/unsubscribe".equals(request.getRequestURI()))));
         http.logout(logout -> logout.logoutUrl("/logout")
                 .logoutSuccessUrl("/jobs")
                 .invalidateHttpSession(true)
@@ -90,7 +95,7 @@ public class SecurityConfiguration {
 
     @Bean
     OAuth2UserService<OidcUserRequest, OidcUser> oidcUsers(
-            @Value("${jobpulse.security.admin-emails:}") String configuredEmails) {
+            @Value("${jobpulse.security.admin-emails:}") String configuredEmails, com.huy.jobpulse.email.EmailPreferences emailPreferences) {
         Set<String> adminEmails = Arrays.stream(configuredEmails.split(","))
                 .map(email -> email.strip().toLowerCase(Locale.ROOT))
                 .filter(email -> !email.isEmpty())
@@ -101,6 +106,7 @@ public class SecurityConfiguration {
             if (!Boolean.TRUE.equals(user.getClaimAsBoolean("email_verified"))) {
                 throw new OAuth2AuthenticationException(new OAuth2Error("unverified_email"));
             }
+            emailPreferences.synchronizeRecipient(user.getSubject(), user.getEmail());
             Set<GrantedAuthority> authorities = new HashSet<>(user.getAuthorities());
             authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
             if (user.getEmail() != null && adminEmails.contains(
