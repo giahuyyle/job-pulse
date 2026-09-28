@@ -10,6 +10,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import tools.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
 import java.time.*;
@@ -21,11 +23,20 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest(properties = {"jobpulse.email.enabled=true", "jobpulse.email.api-key=test-key",
-        "jobpulse.email.webhook-secret=whsec_dGVzdC1zZWNyZXQtd2l0aC0zMi1ieXRlcy1taW5pbXVtIQ==",
         "jobpulse.email.from=JobPulse <alerts@example.com>", "jobpulse.email.app-url=https://jobpulse.example",
         "jobpulse.email.daily-limit=2", "jobpulse.email.monthly-limit=3"})
 @AutoConfigureMockMvc
 class EmailDigestIntegrationTest extends SearchAndAlertsIntegrationTest {
+    // Generate test-only signing material at runtime; never commit credential-shaped fixtures.
+    private static final byte[] WEBHOOK_KEY = new byte[32];
+    static { new java.security.SecureRandom().nextBytes(WEBHOOK_KEY); }
+
+    @DynamicPropertySource
+    static void webhookProperties(DynamicPropertyRegistry properties) {
+        properties.add("jobpulse.email.webhook-secret",
+                () -> "whsec_" + Base64.getEncoder().encodeToString(WEBHOOK_KEY));
+    }
+
     @Autowired DigestQueue queue;
     @Autowired EmailPreferences preferences;
     @Autowired EmailWebhooks webhooks;
@@ -217,7 +228,7 @@ class EmailDigestIntegrationTest extends SearchAndAlertsIntegrationTest {
         var claim = queue.claimNext().orElseThrow(); byte[] body = event("email.bounced", claim.id());
         String timestamp = Long.toString(clock.instant().getEpochSecond());
         javax.crypto.Mac mac = javax.crypto.Mac.getInstance("HmacSHA256");
-        mac.init(new javax.crypto.spec.SecretKeySpec("test-secret-with-32-bytes-minimum!".getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+        mac.init(new javax.crypto.spec.SecretKeySpec(WEBHOOK_KEY, "HmacSHA256"));
         mac.update(("signed-event." + timestamp + ".").getBytes(StandardCharsets.UTF_8));
         String signature = "v1," + Base64.getEncoder().encodeToString(mac.doFinal(body));
         mvc.perform(post("/api/v1/webhooks/resend").contentType(MediaType.APPLICATION_JSON).content(body)
