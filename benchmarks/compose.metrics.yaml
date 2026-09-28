@@ -1,0 +1,79 @@
+# Dedicated project and volumes: never use this file against the normal stack.
+name: jobpulse-metrics
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: jobpulse_metrics
+      POSTGRES_USER: jobpulse
+      POSTGRES_PASSWORD: metrics-local-only
+    cpus: 2
+    mem_limit: 1g
+    volumes: [metrics-postgres:/var/lib/postgresql/data]
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U jobpulse -d jobpulse_metrics]
+      interval: 2s
+      timeout: 3s
+      retries: 40
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: jobpulse
+      RABBITMQ_DEFAULT_PASS: metrics-local-only
+    cpus: 1
+    mem_limit: 512m
+    healthcheck:
+      test: [CMD, rabbitmq-diagnostics, -q, ping]
+      interval: 3s
+      timeout: 5s
+      retries: 40
+  kafka:
+    image: apache/kafka:4.1.0
+    cpus: 2
+    mem_limit: 1g
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: CONTROLLER://:29093,PLAINTEXT://:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:29093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'false'
+    healthcheck:
+      test: [CMD-SHELL, /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:29092 --list >/dev/null 2>&1]
+      interval: 3s
+      timeout: 5s
+      retries: 40
+  app:
+    build: ..
+    image: jobpulse-metrics-app:local
+    cpus: 2
+    mem_limit: 2g
+    ports: ['127.0.0.1:18082:8080']
+    environment:
+      DATABASE_URL: jdbc:postgresql://postgres:5432/jobpulse_metrics
+      DATABASE_USER: jobpulse
+      DATABASE_PASSWORD: metrics-local-only
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: jobpulse
+      RABBITMQ_PASSWORD: metrics-local-only
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      GREENHOUSE_BASE_URL: http://host.docker.internal:18090
+      SPRING_RABBITMQ_LISTENER_SIMPLE_CONCURRENCY: ${METRICS_WORKERS:-1}
+      SPRING_RABBITMQ_LISTENER_SIMPLE_MAX_CONCURRENCY: ${METRICS_WORKERS:-1}
+      # Disable periodic board discovery/scheduling so only harness work runs.
+      JOBPULSE_INGESTION_INITIAL_DELAY_MS: '86400000'
+      JOBPULSE_DISCOVERY_INITIAL_DELAY_MS: '86400000'
+      MANAGEMENT_TRACING_SAMPLING_PROBABILITY: '0'
+      LOGGING_LEVEL_COM_HUY_JOBPULSE: WARN
+    depends_on:
+      postgres: {condition: service_healthy}
+      rabbitmq: {condition: service_healthy}
+      kafka: {condition: service_healthy}
+volumes:
+  metrics-postgres:

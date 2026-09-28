@@ -44,3 +44,5 @@ cd frontend && npm run build
 ```
 
 The repeatable fixture, k6 commands, metrics, and honest reporting rules are documented in [docs/performance.md](docs/performance.md). Existing subsystem notes live in `docs/`.
+Additional isolated alert fan-out, worker concurrency, Kafka recovery/replay, and
+low-rate deployed HTTPS probes are in [docs/metrics-benchmarks.md](docs/metrics-benchmarks.md).

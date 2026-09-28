@@ -1,5 +1,10 @@
 # Performance benchmarks
 
+Additional alert fan-out, worker concurrency, Kafka recovery/replay, and deployed
+HTTPS harnesses are documented in [metrics-benchmarks.md](metrics-benchmarks.md).
+Their [2026-09-28 measured results](evidence/performance-2026-09-28.md) include
+raw evidence and resume wording supported by the runs.
+
 These benchmarks use a dedicated `jobpulse_benchmark` database. Never point the
 commands below at the normal development database. Record the machine, Docker
 resource limits, PostgreSQL version, application commit, and worker count with
