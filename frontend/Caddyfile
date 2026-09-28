@@ -8,7 +8,7 @@
 		Strict-Transport-Security "max-age=31536000"
 	}
 
-	@backend path /api/* /oauth2/* /login/* /logout
+	@backend path /api/* /oauth2/* /login/* /logout /email/unsubscribe
 	handle @backend {
 		reverse_proxy app:8080
 	}

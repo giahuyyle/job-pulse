@@ -57,7 +57,7 @@ gcloud storage buckets add-iam-policy-binding "gs://$bucket" \
   --project "$project"
 
 for secret in postgres-password rabbitmq-password google-client-id \
-  google-client-secret monitor-password grafana-password admin-emails; do
+  google-client-secret monitor-password grafana-password admin-emails resend-api-key resend-webhook-secret; do
   name="jobpulse-$secret"
   if ! gcloud secrets describe "$name" --project "$project" >/dev/null 2>&1; then
     gcloud secrets create "$name" --replication-policy=automatic \

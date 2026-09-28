@@ -46,6 +46,24 @@ export JOBPULSE_MONITOR_PASSWORD="$(secret jobpulse-monitor-password)"
 export GRAFANA_ADMIN_PASSWORD="$(secret jobpulse-grafana-password)"
 export JOBPULSE_ADMIN_EMAILS="$(secret jobpulse-admin-emails)"
 export JOBPULSE_ADMIN_ENABLED=true
+# Optional root-owned configuration; leave sending off until a verified sender is ready.
+# This file contains settings only; secrets are fetched from Secret Manager.
+if [[ -f /opt/jobpulse/email.env ]]; then
+  source /opt/jobpulse/email.env
+fi
+export JOBPULSE_EMAIL_ENABLED="${JOBPULSE_EMAIL_ENABLED:-false}"
+export JOBPULSE_EMAIL_FROM="${JOBPULSE_EMAIL_FROM:-}"
+export JOBPULSE_EMAIL_ALLOWLIST="${JOBPULSE_EMAIL_ALLOWLIST:-}"
+export JOBPULSE_EMAIL_DAILY_LIMIT="${JOBPULSE_EMAIL_DAILY_LIMIT:-100}"
+export JOBPULSE_EMAIL_MONTHLY_LIMIT="${JOBPULSE_EMAIL_MONTHLY_LIMIT:-3000}"
+if [[ "$JOBPULSE_EMAIL_ENABLED" == true ]]; then
+  export RESEND_API_KEY="$(secret jobpulse-resend-api-key)"
+  export RESEND_WEBHOOK_SECRET="$(secret jobpulse-resend-webhook-secret)"
+  [[ -n "$RESEND_API_KEY" && -n "$RESEND_WEBHOOK_SECRET" && -n "$JOBPULSE_EMAIL_FROM" ]] || {
+    echo 'Email sending requires Resend secrets and JOBPULSE_EMAIL_FROM' >&2
+    exit 2
+  }
+fi
 
 for value in POSTGRES_PASSWORD RABBITMQ_PASSWORD GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET \
   JOBPULSE_MONITOR_PASSWORD GRAFANA_ADMIN_PASSWORD JOBPULSE_ADMIN_EMAILS; do

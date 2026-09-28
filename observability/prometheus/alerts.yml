@@ -107,3 +107,27 @@ groups:
           severity: warning
         annotations:
           summary: More than a quarter of ingestion runs are failing
+
+      - alert: JobPulseEmailQuotaExhausted
+        expr: jobpulse_email_enabled == 1 and (jobpulse_email_daily_remaining == 0 or jobpulse_email_monthly_remaining == 0 or jobpulse_email_quota_blocked == 1)
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Email free-tier quota exhausted; matches are carried forward
+
+      - alert: JobPulseEmailBacklogOld
+        expr: jobpulse_email_enabled == 1 and jobpulse_email_oldest_age_seconds > 172800
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: Email candidates have waited more than two days
+
+      - alert: JobPulseEmailNeedsReview
+        expr: jobpulse_email_uncertain > 0 or jobpulse_email_failed > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Failed or uncertain email digests need reconciliation
