@@ -227,3 +227,9 @@
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
+
+.email-summary { margin-top: 24px; padding: 20px; border: 1px solid #d9ded7; border-radius: 8px; background: white; }
+.email-summary h2 { font-size: 17px; font-weight: 700; margin-bottom: 8px; }
+.email-summary p { font-size: 13px; line-height: 1.7; color: #526656; }
+.digest-opt-in, .save-search-card form label.digest-opt-in { display: flex; gap: 8px; align-items: flex-start; margin-top: 12px; font-size: 12px; line-height: 1.5; }
+.digest-opt-in input { margin-top: 3px; accent-color: #37664b; flex-shrink: 0; }

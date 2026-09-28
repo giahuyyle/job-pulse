@@ -6,7 +6,7 @@ export interface JobSummary { id:string; title:string; company:string; location:
 export interface Job extends JobSummary { description:string|null; employmentType:string|null; status:string }
 export interface Page<T> { content:T[]; page:number; size:number; totalElements:number; totalPages:number }
 export interface Problem { title?:string; detail?:string; status?:number }
-export interface Search { id:string; name:string; query:string|null; company:string|null; source:JobSource|null; remotePolicy:RemotePolicy|null; location:string|null; enabled:boolean; createdAt:string }
+export interface Search { id:string; name:string; query:string|null; company:string|null; source:JobSource|null; remotePolicy:RemotePolicy|null; location:string|null; enabled:boolean; emailEnabled:boolean; createdAt:string }
 export interface Alert { id:string; savedSearchId:string; createdAt:string; readAt:string|null; job:JobSummary }
 export interface Target { id:string; source:JobSource; sourceAccount:string; company:string; careersUrl:string|null; enabled:boolean; intervalMinutes:number; nextRunAt:string; lastSuccessAt:string|null; lastError:string|null }
 export interface Board { id:string; company:string; provider:JobSource; sourceAccount:string; enabled:boolean; pollingIntervalMinutes:number; lastSuccessfulRunAt:string|null; lastRunStatus:RequestStatus|null }
@@ -21,3 +21,5 @@ export interface AdminEvent { id:string; jobId:string; type:string; schemaVersio
 export interface AdminJobSummary { id:string; title:string; company:string; source:JobSource; sourceAccount:string; sourceJobId:string; status:string; lastSeenAt:string; lastIngestionRunId:string|null }
 export interface AdminJob extends AdminJobSummary { location:string|null; description:string|null; employmentType:string|null; remotePolicy:string; applyUrl:string; postedAt:string|null; firstSeenAt:string; fingerprint:string; rawPayload:string|null; events:AdminEvent[] }
 export interface AuditEntry { id:string; actor:string; actionType:string; targetType:string; targetId:string; occurredAt:string; beforeValue:string|null; afterValue:string|null; correlationId:string }
+
+export interface EmailSettings { recipient:string|null; timeZone:string; localTime:string; nextDigestAt:string|null; serviceAvailable:boolean; suppression:string|null }
