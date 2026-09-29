@@ -64,6 +64,20 @@ class SecurityIntegrationTest {
     }
 
     @Test
+    void sessionIncludesGoogleProfileForAccountDropdown() throws Exception {
+        mvc.perform(get("/api/v1/auth/session").with(oidcLogin().idToken(token -> token
+                        .claim("sub", "alice-subject").claim("email", "alice@example.com")
+                        .claim("name", "Alice Example").claim("picture", "https://example.com/avatar.jpg"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Alice Example"))
+                .andExpect(jsonPath("$.email").value("alice@example.com"))
+                .andExpect(jsonPath("$.picture").value("https://example.com/avatar.jpg"));
+        mvc.perform(get("/api/v1/auth/session"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.authenticated").value(false))
+                .andExpect(jsonPath("$.name").isEmpty()).andExpect(jsonPath("$.picture").isEmpty());
+    }
+
+    @Test
     void publicReadsRemainAvailableButWritesRequireLoginAndCsrf() throws Exception {
         mvc.perform(get("/api/v1/jobs")).andExpect(status().isOk());
         mvc.perform(get("/api/v1/saved-searches")).andExpect(status().isUnauthorized());

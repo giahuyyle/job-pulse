@@ -5,8 +5,9 @@ import { api, signOut } from './api/client'
 import JobsPage from './pages/JobsPage'
 import AlertsPage from './pages/AlertsPage'
 import AdminPage from './pages/AdminPage'
+import AccountDropdown from './components/AccountDropdown'
 
-type Session = {authenticated:boolean; email:string|null; subject:string|null; admin:boolean}
+type Session = {authenticated:boolean; email:string|null; subject:string|null; admin:boolean; name?:string|null; picture?:string|null}
 
 function SignInGate({session,admin,children}:{session:Session|null;admin?:boolean;children:ReactNode}){
   if(!session) return <div className="mx-auto max-w-2xl p-10">Checking your session…</div>
@@ -35,10 +36,10 @@ export default function App() {
         <nav className="desktop-nav hidden items-center gap-1 md:flex" aria-label="Main navigation">
           {links.map(({to,label,icon:Icon})=><NavLink key={to} to={to} className={({isActive})=>`flex items-center gap-2 px-4 py-2 text-sm font-bold ${isActive?'active':'text-ink/55 hover:text-ink'}`}><Icon size={15}/>{label}</NavLink>)}
         </nav>
-        <div className="hidden min-w-0 items-center gap-2 text-xs font-bold text-pine/60 md:flex">{session?.authenticated?<><span className="max-w-40 truncate">{session.email}</span><button className="btn-secondary" onClick={()=>void signOut()}>Sign out</button></>:<a className="btn-secondary" href="/oauth2/authorization/google">Sign in</a>}</div>
-        <button className="menu-button md:hidden" onClick={()=>setOpen(!open)} aria-label={open?'Close menu':'Open menu'} aria-expanded={open} aria-controls="mobile-navigation">{open?<X/>:<Menu/>}</button>
+        <div className="flex items-center gap-2">{session?.authenticated?<AccountDropdown name={session.name} email={session.email} picture={session.picture} onSignOut={signOut}/>:<a className="btn-secondary hidden md:inline-flex" href="/oauth2/authorization/google">Sign in</a>}
+        <button className="menu-button md:hidden" onClick={()=>setOpen(!open)} aria-label={open?'Close menu':'Open menu'} aria-expanded={open} aria-controls="mobile-navigation">{open?<X/>:<Menu/>}</button></div>
       </div>
-      {open&&<nav id="mobile-navigation" aria-label="Mobile navigation" className="mobile-nav space-y-1 border-t border-black/8 p-4 md:hidden">{links.map(({to,label})=><NavLink key={to} to={to} onClick={()=>setOpen(false)} className={({isActive})=>`block rounded-xl px-4 py-3 font-bold ${isActive?'bg-pine text-white':''}`}>{label}</NavLink>)}{session?.authenticated?<button onClick={()=>void signOut()} className="block w-full rounded-xl px-4 py-3 text-left font-bold">Sign out</button>:<a href="/oauth2/authorization/google" className="block rounded-xl px-4 py-3 font-bold">Sign in with Google</a>}</nav>}
+      {open&&<nav id="mobile-navigation" aria-label="Mobile navigation" className="mobile-nav space-y-1 border-t border-black/8 p-4 md:hidden">{links.map(({to,label})=><NavLink key={to} to={to} onClick={()=>setOpen(false)} className={({isActive})=>`block rounded-xl px-4 py-3 font-bold ${isActive?'bg-pine text-white':''}`}>{label}</NavLink>)}{!session?.authenticated&&<a href="/oauth2/authorization/google" className="block rounded-xl px-4 py-3 font-bold">Sign in with Google</a>}</nav>}
     </header>
     <main id="main-content"><Routes><Route path="/jobs" element={<JobsPage authenticated={!!session?.authenticated}/>}/><Route path="/alerts" element={<SignInGate session={session}><AlertsPage/></SignInGate>}/><Route path="/admin" element={<SignInGate session={session} admin><AdminPage/></SignInGate>}/><Route path="*" element={<Navigate to="/jobs" replace/>}/></Routes></main>
   </div>

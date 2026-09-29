@@ -14,11 +14,12 @@ public class AuthController {
     @GetMapping("/session")
     public SessionResponse session(Authentication authentication) {
         if (authentication == null || !(authentication.getPrincipal() instanceof OidcUser user)) {
-            return new SessionResponse(false, null, null, false);
+            return new SessionResponse(false, null, null, false, null, null);
         }
         boolean admin = authentication.getAuthorities().stream()
                 .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
-        return new SessionResponse(true, user.getEmail(), user.getSubject(), admin);
+        return new SessionResponse(true, user.getEmail(), user.getSubject(), admin,
+                user.getFullName(), user.getClaimAsString("picture"));
     }
 
     @GetMapping("/csrf")
@@ -27,5 +28,5 @@ public class AuthController {
     }
 
     public record SessionResponse(boolean authenticated, String email,
-            String subject, boolean admin) {}
+            String subject, boolean admin, String name, String picture) {}
 }

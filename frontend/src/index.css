@@ -24,7 +24,7 @@
 
 @layer components {
   .panel { @apply rounded-xl border border-black/10 bg-white; }
-  .field { @apply h-11 w-full rounded-md border border-black/15 bg-white px-3.5 text-sm placeholder:text-black/60 focus:border-pine; }
+  .field { @apply h-11 w-full rounded-md border border-black/15 bg-white px-3.5 text-sm text-ink placeholder:text-black/60 focus:border-pine; }
   .btn { @apply inline-flex h-10 items-center justify-center gap-2 rounded-md px-4 text-sm font-bold disabled:opacity-45; }
   .btn-primary { @apply inline-flex h-10 items-center justify-center gap-2 rounded-md bg-pine px-4 text-sm font-bold text-white hover:bg-[#285a45] disabled:opacity-45; }
   .btn-secondary { @apply inline-flex h-10 items-center justify-center gap-2 rounded-md border border-black/15 bg-white px-4 text-sm font-bold hover:border-pine/50 hover:bg-[#f6f8f3] disabled:opacity-45; }
@@ -99,7 +99,7 @@
 .save-search-card > p:not(.eyebrow):not(.save-notice) { margin-top: 12px; color: #c1d2c5; font-size: 13px; line-height: 1.6; }
 .save-search-card form { margin-top: 23px; }
 .save-search-card form label { display: block; margin-bottom: 8px; color: #dce9db; font-size: 12px; font-weight: 700; }
-.save-search-card .field { border-color: transparent; }
+.save-search-card .field { border-color: transparent; color: #17251f; }
 .save-search-card form .btn-primary { width: 100%; margin-top: 9px; background: #d7ed8d; color: #183f32; }
 .save-search-card form .btn-primary:hover { background: #e6f6ae; }
 .save-notice { margin-top: 12px; color: #e6f6ae; font-size: 12px; line-height: 1.5; font-weight: 700; }
@@ -233,3 +233,15 @@
 .email-summary p { font-size: 13px; line-height: 1.7; color: #526656; }
 .digest-opt-in, .save-search-card form label.digest-opt-in { display: flex; gap: 8px; align-items: flex-start; margin-top: 12px; font-size: 12px; line-height: 1.5; }
 .digest-opt-in input { margin-top: 3px; accent-color: #37664b; flex-shrink: 0; }
+
+.account-dropdown { position: relative; flex-shrink: 0; color: #17251f; }
+.account-avatar { display: grid; place-items: center; width: 42px; height: 42px; overflow: hidden; border: 1px solid #b8c9b6; border-radius: 50%; background: #e4ecd9; color: #183f32; }
+.account-avatar:hover, .account-avatar[aria-expanded=true] { border-color: #183f32; box-shadow: 0 0 0 3px rgba(24,63,50,.08); }
+.account-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.account-panel { position: absolute; top: calc(100% + 12px); right: 0; width: 290px; max-width: calc(100vw - 40px); padding: 18px; border: 1px solid #d9ded7; border-radius: 12px; background: #fff; box-shadow: 0 14px 40px rgba(23,37,31,.14); }
+.account-name { font-size: 15px; font-weight: 700; line-height: 1.4; overflow-wrap: anywhere; }
+.account-email { margin-top: 4px; font-size: 13px; line-height: 1.5; color: #58695d; overflow-wrap: anywhere; }
+.account-signout { display: flex; align-items: center; gap: 9px; width: 100%; margin-top: 16px; padding: 11px 12px; border-top: 1px solid #e4e9e0; border-radius: 6px; color: #183f32; font-size: 14px; font-weight: 700; text-align: left; }
+.account-signout:hover { background: #f2f5ed; }
+.account-signout:disabled { opacity: .6; }
+.account-error { margin-top: 10px; font-size: 13px; color: #a63223; }
